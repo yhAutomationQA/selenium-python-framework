@@ -59,3 +59,8 @@ select = ["E", "F", "I", "W"]
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv", "venv", ".git", "reports", "screenshots", "logs", "allure-results"]
+skips = ["B101", "B311", "B403", "B404", "B603", "B607"]
+assert_used = false

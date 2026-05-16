@@ -1,34 +1,37 @@
-name: CI Pipeline
+name: Enterprise CI Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, release/**]
   pull_request:
-    branches: [main]
+    branches: [main, develop]
+  schedule:
+    - cron: "0 6 * * 1-5"
   workflow_dispatch:
     inputs:
-      browser:
-        description: "Browser to run tests"
-        required: true
-        default: "chrome"
-        type: choice
-        options:
-          - chrome
-          - firefox
-          - edge
       environment:
-        description: "Target environment"
+        description: Target test environment
         required: true
-        default: "qa"
+        default: qa
         type: choice
         options:
           - dev
           - qa
           - staging
-      markers:
-        description: "Test markers to run"
+      browser:
+        description: Browser to run
         required: true
-        default: "smoke"
+        default: all
+        type: choice
+        options:
+          - chrome
+          - firefox
+          - edge
+          - all
+      markers:
+        description: Test markers to execute
+        required: true
+        default: smoke
         type: choice
         options:
           - smoke
@@ -36,48 +39,336 @@ on:
           - sanity
           - e2e
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
+env:
+  PYTHON_VERSION: "3.12"
+  ENV: ${{ github.event.inputs.environment || 'qa' }}
+  HEADLESS: "true"
+  PIP_CACHE: ~/.cache/pip
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.12
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements.txt
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+      - name: Install lint tools
+        run: pip install --quiet ruff
 
-      - name: Install Chrome
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
+      - name: Ruff check
+        run: ruff check .
 
-      - name: Run tests
-        run: |
-          pytest -v \
-            --browser=${{ github.event.inputs.browser || 'chrome' }} \
-            --env=${{ github.event.inputs.environment || 'qa' }} \
-            --headless \
-            -m "${{ github.event.inputs.markers || 'smoke' }}" \
-            --html=reports/ci_report.html \
-            --self-contained-html
+      - name: Ruff format check
+        run: ruff format --check .
 
-      - name: Upload test report
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install security tools
+        run: pip install --quiet bandit
+
+      - name: Bandit scan
+        run: bandit -r . -f html -o bandit_report.html || true
+
+      - name: Upload security report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-report
-          path: reports/
+          name: security-report
+          path: bandit_report.html
+          retention-days: 30
 
-      - name: Upload screenshots
+  offline-tests:
+    name: Offline / API Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: pip install --quiet -r requirements.txt
+
+      - name: Run offline tests
+        run: |
+          pytest -m offline \
+            --env=${{ env.ENV }} \
+            --alluredir=allure-results \
+            --junitxml=reports/junit_offline.xml
+
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-offline
+          path: allure-results/
+          retention-days: 14
+
+      - name: Upload JUnit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-offline
+          path: reports/junit_offline.xml
+          retention-days: 14
+
+  smoke-tests:
+    name: Smoke (${{ matrix.browser }})
+    needs: [lint, security]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: ${{ github.event.inputs.browser == 'all' && fromJSON('["chrome", "firefox", "edge"]') || fromJSON(format('["{0}"]', github.event.inputs.browser || 'chrome')) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: pip install --quiet -r requirements.txt
+
+      - name: Install Edge browser
+        if: matrix.browser == 'edge'
+        run: |
+          curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
+            | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-archive-keyring.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/repos/edge stable main" \
+            | sudo tee /etc/apt/sources.list.d/microsoft-edge.list
+          sudo apt-get update --quiet && sudo apt-get install --quiet -y microsoft-edge-stable
+
+      - name: Verify browser
+        run: |
+          if [[ "${{ matrix.browser }}" == "chrome" ]]; then google-chrome --version; fi
+          if [[ "${{ matrix.browser }}" == "firefox" ]]; then firefox --version; fi
+          if [[ "${{ matrix.browser }}" == "edge" ]]; then microsoft-edge --version; fi
+
+      - name: Run smoke tests
+        run: |
+          pytest -m smoke \
+            --browser=${{ matrix.browser }} \
+            --env=${{ env.ENV }} \
+            --headless \
+            -n auto \
+            --alluredir=allure-results \
+            --html=reports/smoke_${{ matrix.browser }}_report.html \
+            --self-contained-html \
+            --junitxml=reports/junit_smoke_${{ matrix.browser }}.xml
+
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-smoke-${{ matrix.browser }}
+          path: allure-results/
+          retention-days: 14
+          overwrite: true
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-report-${{ matrix.browser }}
+          path: reports/smoke_${{ matrix.browser }}_report.html
+          retention-days: 14
+
+      - name: Upload JUnit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-smoke-${{ matrix.browser }}
+          path: reports/junit_smoke_${{ matrix.browser }}.xml
+          retention-days: 14
+
+      - name: Upload failure screenshots
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: failure-screenshots
+          name: screenshots-smoke-${{ matrix.browser }}
           path: screenshots/
+          retention-days: 30
+
+  regression-tests:
+    name: Regression (${{ matrix.browser }})
+    needs: [smoke-tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        browser:
+          - chrome
+          - firefox
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: pip install --quiet -r requirements.txt
+
+      - name: Run regression tests
+        run: |
+          pytest -m regression \
+            --browser=${{ matrix.browser }} \
+            --env=${{ env.ENV }} \
+            --headless \
+            -n auto \
+            --alluredir=allure-results \
+            --html=reports/regression_${{ matrix.browser }}_report.html \
+            --self-contained-html \
+            --junitxml=reports/junit_regression_${{ matrix.browser }}.xml
+
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-regression-${{ matrix.browser }}
+          path: allure-results/
+          retention-days: 30
+          overwrite: true
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-report-${{ matrix.browser }}
+          path: reports/regression_${{ matrix.browser }}_report.html
+          retention-days: 30
+
+      - name: Upload JUnit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-regression-${{ matrix.browser }}
+          path: reports/junit_regression_${{ matrix.browser }}.xml
+          retention-days: 30
+
+      - name: Upload failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-regression-${{ matrix.browser }}
+          path: screenshots/
+          retention-days: 30
+
+  allure-report:
+    name: Allure Report
+    needs:
+      - offline-tests
+      - smoke-tests
+      - regression-tests
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download all Allure results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: allure-*
+          merge-multiple: true
+          path: allure-results
+
+      - name: Count result files
+        run: |
+          count=$(find allure-results -name "*.json" 2>/dev/null | wc -l)
+          echo "Allure result files: $count"
+
+      - name: Install Allure CLI
+        run: |
+          ALLURE_VERSION="2.33.0"
+          curl -sL "https://github.com/allure-framework/allure2/releases/download/$ALLURE_VERSION/allure-$ALLURE_VERSION.tgz" \
+            | tar -xz -C /tmp/
+          echo "/tmp/allure-$ALLURE_VERSION/bin" >> $GITHUB_PATH
+
+      - name: Generate Allure report
+        run: |
+          mkdir -p allure-report
+          allure generate allure-results -o allure-report --clean
+        continue-on-error: true
+
+      - name: Upload Allure report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report/
+          retention-days: 30
+
+  pipeline-summary:
+    name: Pipeline Summary
+    if: always()
+    needs:
+      - lint
+      - security
+      - offline-tests
+      - smoke-tests
+      - regression-tests
+      - allure-report
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build summary
+        run: |
+          cat <<'SUMMARY' >> $GITHUB_STEP_SUMMARY
+          # Pipeline Results
+
+          | Stage | Matrix | Status |
+          |-------|--------|--------|
+          | Lint & Format | — | ${{ needs.lint.result == 'success' && '✅' || '❌' }} |
+          | Security Scan | — | ${{ needs.security.result == 'success' && '✅' || needs.security.result == 'failure' && '❌' || '⚠️' }} |
+          | Offline / API Tests | — | ${{ needs.offline-tests.result == 'success' && '✅' || '❌' }} |
+          | Smoke Tests | chrome, firefox, edge | ${{ needs.smoke-tests.result == 'success' && '✅' || '❌' }} |
+          | Regression Tests | chrome, firefox | ${{ needs.regression-tests.result == 'success' && '✅' || '❌' }} |
+          | Allure Report | — | ${{ needs.allure-report.result == 'success' && '✅' || '❌' }} |
+
+          **Commit:** `${{ github.sha }}`
+          **Branch:** `${{ github.ref_name }}`
+          **Environment:** `${{ env.ENV }}`
+
+          [View run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          SUMMARY
