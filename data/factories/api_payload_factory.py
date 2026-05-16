@@ -46,11 +46,13 @@ class ApiPayloadFactory(BaseFactory):
         **overrides: Any,
     ) -> Dict[str, Any]:
         data = {
-            "items": items or [
+            "items": items
+            or [
                 {"product_id": self.faker.uuid4(), "quantity": 1, "price": 29.99},
                 {"product_id": self.faker.uuid4(), "quantity": 2, "price": 9.99},
             ],
-            "shipping_address": shipping_address or {
+            "shipping_address": shipping_address
+            or {
                 "first_name": self.faker.first_name(),
                 "last_name": self.faker.last_name(),
                 "street": self.faker.street_address(),

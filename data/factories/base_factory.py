@@ -44,9 +44,7 @@ class BaseFactory:
         path.write_text(json.dumps(data, indent=2, default=str))
         return path
 
-    def to_json_file_bulk(
-        self, path: Union[str, Path], count: int = 3, **shared_overrides: Any
-    ) -> Path:
+    def to_json_file_bulk(self, path: Union[str, Path], count: int = 3, **shared_overrides: Any) -> Path:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         data = self.list(count, **shared_overrides)

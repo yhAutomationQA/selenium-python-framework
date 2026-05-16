@@ -57,9 +57,7 @@ class LoginFlow(BaseFlow):
     # ── Auth Actions ──────────────────────────────────────────────
 
     def attempt_login(self, username: str, password: str = VALID_PASSWORD) -> "LoginFlow":
-        self._login_page.open(self.base_url).enter_username(username).enter_password(
-            password
-        ).click_login()
+        self._login_page.open(self.base_url).enter_username(username).enter_password(password).click_login()
         return self
 
     def logout(self) -> "LoginFlow":

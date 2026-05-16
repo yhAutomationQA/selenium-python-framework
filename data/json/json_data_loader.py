@@ -73,10 +73,7 @@ class JsonDataLoader:
 
     @classmethod
     def product_price_list(cls) -> List[float]:
-        return [
-            p["price"]
-            for p in cls.saucedemo_products()["products"].values()
-        ]
+        return [p["price"] for p in cls.saucedemo_products()["products"].values()]
 
     @classmethod
     def paths(cls) -> Dict[str, str]:

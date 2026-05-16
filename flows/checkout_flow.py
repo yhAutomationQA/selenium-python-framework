@@ -28,16 +28,12 @@ class CheckoutFlow(BaseFlow):
         self._step_one.open(self.base_url)
         return self
 
-    def fill_shipping_information(
-        self, first_name: str, last_name: str, postal_code: str
-    ) -> "CheckoutFlow":
+    def fill_shipping_information(self, first_name: str, last_name: str, postal_code: str) -> "CheckoutFlow":
         self._step_one.fill_information(first_name, last_name, postal_code)
         return self
 
     def fill_shipping_with_defaults(self) -> "CheckoutFlow":
-        self._step_one.fill_information(
-            DEFAULT_FIRST_NAME, DEFAULT_LAST_NAME, DEFAULT_POSTAL_CODE
-        )
+        self._step_one.fill_information(DEFAULT_FIRST_NAME, DEFAULT_LAST_NAME, DEFAULT_POSTAL_CODE)
         return self
 
     def continue_to_overview(self) -> "CheckoutFlow":

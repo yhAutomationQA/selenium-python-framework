@@ -75,9 +75,7 @@ class TestPosts:
         assert jsonplaceholder.post_exists(99999) is False
 
     @pytest.mark.parametrize("post_id", [1, 25, 50, 75, 100])
-    def test_multiple_posts_have_valid_structure(
-        self, jsonplaceholder: JSONPlaceholderService, post_id: int
-    ):
+    def test_multiple_posts_have_valid_structure(self, jsonplaceholder: JSONPlaceholderService, post_id: int):
         post = jsonplaceholder.get_post(post_id)
         assert post.id == post_id
         assert post.user_id >= 1
@@ -190,6 +188,7 @@ class TestApiClient:
     def test_raise_for_status_ok(self):
         import requests as req
         from requests import Response
+
         response: Response = req.get(f"{JSONPLACEHOLDER_URL}/posts/1")
         # Should not raise
         ApiClient.raise_for_status(response)

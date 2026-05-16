@@ -88,7 +88,10 @@ class BasePage:
         return self
 
     def fill(
-        self, locator: Tuple[str, str], text: str, clear_first: bool = True,
+        self,
+        locator: Tuple[str, str],
+        text: str,
+        clear_first: bool = True,
         timeout: Optional[int] = None,
     ) -> "BasePage":
         self._actions.type(locator, text, clear_first=clear_first, timeout=timeout)
@@ -169,14 +172,18 @@ class BasePage:
         return self
 
     def js_scroll_to(
-        self, locator: Tuple[str, str], block: str = "center",
+        self,
+        locator: Tuple[str, str],
+        block: str = "center",
         timeout: Optional[int] = None,
     ) -> "BasePage":
         self._js.scroll_into_view(locator, block=block, timeout=timeout)
         return self
 
     def js_highlight(
-        self, locator: Tuple[str, str], duration: float = 0.3,
+        self,
+        locator: Tuple[str, str],
+        duration: float = 0.3,
         timeout: Optional[int] = None,
     ) -> "BasePage":
         self._js.highlight(locator, duration=duration, timeout=timeout)
@@ -199,6 +206,7 @@ class BasePage:
     def accept_alert(self, timeout: Optional[int] = None) -> "BasePage":
         from selenium.webdriver.support import expected_conditions as EC
         from selenium.webdriver.support.ui import WebDriverWait
+
         WebDriverWait(self.driver, timeout or self._timeout).until(EC.alert_is_present())
         self.driver.switch_to.alert.accept()
         logger.debug("%s | accept_alert", self._page_name)
@@ -207,6 +215,7 @@ class BasePage:
     def dismiss_alert(self, timeout: Optional[int] = None) -> "BasePage":
         from selenium.webdriver.support import expected_conditions as EC
         from selenium.webdriver.support.ui import WebDriverWait
+
         WebDriverWait(self.driver, timeout or self._timeout).until(EC.alert_is_present())
         self.driver.switch_to.alert.dismiss()
         logger.debug("%s | dismiss_alert", self._page_name)
@@ -215,6 +224,7 @@ class BasePage:
     def get_alert_text(self, timeout: Optional[int] = None) -> str:
         from selenium.webdriver.support import expected_conditions as EC
         from selenium.webdriver.support.ui import WebDriverWait
+
         WebDriverWait(self.driver, timeout or self._timeout).until(EC.alert_is_present())
         text = self.driver.switch_to.alert.text
         logger.debug("%s | alert_text | %s", self._page_name, text)

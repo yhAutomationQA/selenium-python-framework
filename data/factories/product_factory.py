@@ -76,8 +76,7 @@ class ProductFactory(BaseFactory):
     def saucedemo_product(name: str) -> Dict[str, Any]:
         if name not in ProductFactory._SAUCEDEMO_CATALOG:
             raise ValueError(
-                f"Unknown SauceDemo product: '{name}'. "
-                f"Available: {list(ProductFactory._SAUCEDEMO_CATALOG)}"
+                f"Unknown SauceDemo product: '{name}'. Available: {list(ProductFactory._SAUCEDEMO_CATALOG)}"
             )
         return dict(ProductFactory._SAUCEDEMO_CATALOG[name])
 

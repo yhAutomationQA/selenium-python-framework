@@ -34,11 +34,7 @@ class CartPage(BasePage):
 
     def get_item_names(self) -> List[str]:
         """Return the product names currently in the cart."""
-        return [
-            el.text.strip()
-            for el in self.find_elements(self._loc.CART_ITEM_NAME)
-            if el.text.strip()
-        ]
+        return [el.text.strip() for el in self.find_elements(self._loc.CART_ITEM_NAME) if el.text.strip()]
 
     def get_item_quantities(self) -> List[int]:
         """Return the quantities of each cart item as integers."""

@@ -76,10 +76,7 @@ class ModalComponent(BaseComponent):
         inputs = self.find_elements(self.INPUTS)
         if index >= len(inputs):
             raise IndexError(f"Modal has {len(inputs)} inputs, cannot access index {index}")
-        locator = (
-            self.INPUTS if index == 0
-            else (By.CSS_SELECTOR, f".modal-body input:nth-of-type({index + 1})")
-        )
+        locator = self.INPUTS if index == 0 else (By.CSS_SELECTOR, f".modal-body input:nth-of-type({index + 1})")
         self.fill(locator, text, timeout=timeout)
         return self
 

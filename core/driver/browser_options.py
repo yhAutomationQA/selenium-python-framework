@@ -168,7 +168,6 @@ BrowserOptions = Union[ChromeOptions, FirefoxOptions, EdgeOptions]
 
 
 class BrowserOptionsFactory:
-
     @staticmethod
     def create_options(
         browser: str,

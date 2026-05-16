@@ -30,11 +30,7 @@ class CheckoutStepTwoPage(BasePage):
 
     def get_item_names(self) -> List[str]:
         """Return the product names listed in the overview."""
-        return [
-            el.text.strip()
-            for el in self.find_elements(self._loc.CART_ITEM_NAME)
-            if el.text.strip()
-        ]
+        return [el.text.strip() for el in self.find_elements(self._loc.CART_ITEM_NAME) if el.text.strip()]
 
     def get_item_prices(self) -> List[float]:
         """Return the prices of each item as floats."""

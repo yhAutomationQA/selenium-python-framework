@@ -3,6 +3,7 @@
 Marked with @pytest.mark.offline. Run with: pytest -m offline
 Verifies page objects, locators, and flows are correctly defined.
 """
+
 from unittest.mock import MagicMock, PropertyMock
 
 import pytest
@@ -14,9 +15,7 @@ pytestmark = [pytest.mark.offline]
 def mock_driver():
     driver = MagicMock()
     type(driver).title = PropertyMock(return_value="Swag Labs")
-    type(driver).current_url = PropertyMock(
-        return_value="https://www.saucedemo.com/"
-    )
+    type(driver).current_url = PropertyMock(return_value="https://www.saucedemo.com/")
     element = MagicMock()
     element.is_displayed.return_value = True
     element.is_enabled.return_value = True
@@ -122,9 +121,7 @@ class TestLocatorStructure:
                 if attr_name.startswith("_"):
                     continue
                 val = getattr(loc, attr_name)
-                assert isinstance(val, tuple), (
-                    f"{loc_cls.__name__}.{attr_name} is not a tuple"
-                )
+                assert isinstance(val, tuple), f"{loc_cls.__name__}.{attr_name} is not a tuple"
                 assert len(val) == 2
                 assert isinstance(val[0], str)
                 assert isinstance(val[1], str)
@@ -430,6 +427,7 @@ class TestPageMethodSignatures:
 
     def test_user_factory_dynamic_methods(self):
         from data.factories.user_factory import UserFactory
+
         factory = UserFactory(seed=42)
         profile = factory.checkout_profile()
         assert "first_name" in profile
@@ -462,6 +460,7 @@ class TestPageMethodSignatures:
 
     def test_product_factory_dynamic(self):
         from data.factories.product_factory import ProductFactory
+
         factory = ProductFactory(seed=42)
         product = factory.random_product()
         assert "name" in product
@@ -496,6 +495,7 @@ class TestPageMethodSignatures:
 
     def test_factories_init_exports(self):
         from data.factories import ApiPayloadFactory, BaseFactory, ProductFactory, UserFactory
+
         assert BaseFactory is not None
         assert UserFactory is not None
         assert ProductFactory is not None
@@ -503,6 +503,7 @@ class TestPageMethodSignatures:
 
     def test_factory_clone_and_serialize(self, tmp_path):
         from data.factories.user_factory import UserFactory
+
         factory = UserFactory(seed=42)
         cloned = factory.clone(seed=99)
         assert cloned._seed == 99
@@ -579,10 +580,18 @@ class TestPageMethodSignatures:
 
     def test_data_init_exports(self):
         from data import ApiPayloadFactory, BaseFactory, JsonDataLoader, ProductFactory, TestDataLoader, UserFactory
-        assert all(x is not None for x in [
-            BaseFactory, UserFactory, ProductFactory, ApiPayloadFactory,
-            JsonDataLoader, TestDataLoader,
-        ])
+
+        assert all(
+            x is not None
+            for x in [
+                BaseFactory,
+                UserFactory,
+                ProductFactory,
+                ApiPayloadFactory,
+                JsonDataLoader,
+                TestDataLoader,
+            ]
+        )
 
     def test_page_methods_return_self_for_chaining(self, mock_driver):
         from pages.cart.cart_page import CartPage
@@ -650,12 +659,14 @@ class TestApiModels:
     def test_post_model(self):
         from api.models import PostModel
 
-        post = PostModel.model_validate({
-            "id": 1,
-            "userId": 1,
-            "title": "Test Title",
-            "body": "Test body content.",
-        })
+        post = PostModel.model_validate(
+            {
+                "id": 1,
+                "userId": 1,
+                "title": "Test Title",
+                "body": "Test body content.",
+            }
+        )
         assert post.id == 1
         assert post.user_id == 1
         assert post.title == "Test Title"
@@ -663,12 +674,14 @@ class TestApiModels:
     def test_user_model(self):
         from api.models import UserModel
 
-        user = UserModel.model_validate({
-            "id": 1,
-            "name": "John Doe",
-            "username": "johndoe",
-            "email": "john@example.com",
-        })
+        user = UserModel.model_validate(
+            {
+                "id": 1,
+                "name": "John Doe",
+                "username": "johndoe",
+                "email": "john@example.com",
+            }
+        )
         assert user.id == 1
         assert user.name == "John Doe"
         assert "@" in user.email
@@ -676,18 +689,21 @@ class TestApiModels:
     def test_todo_model(self):
         from api.models import TodoModel
 
-        todo = TodoModel.model_validate({
-            "id": 1,
-            "userId": 1,
-            "title": "Test Todo",
-            "completed": False,
-        })
+        todo = TodoModel.model_validate(
+            {
+                "id": 1,
+                "userId": 1,
+                "title": "Test Todo",
+                "completed": False,
+            }
+        )
         assert todo.id == 1
         assert todo.completed is False
         assert todo.title == "Test Todo"
 
     def test_all_model_exports(self):
         from api.models import AddressModel, PostModel, TodoModel, UserModel
+
         assert PostModel is not None
         assert UserModel is not None
         assert TodoModel is not None
@@ -719,9 +735,7 @@ class TestApiSchemas:
     def test_create_user_schema(self):
         from api.schemas import CreateUserSchema
 
-        schema = CreateUserSchema(
-            name="Test User", username="testuser", email="test@example.com"
-        )
+        schema = CreateUserSchema(name="Test User", username="testuser", email="test@example.com")
         assert schema.email == "test@example.com"
 
     def test_create_todo_schema(self):
@@ -741,11 +755,19 @@ class TestApiSchemas:
             UpdateTodoSchema,
             UpdateUserSchema,
         )
-        assert all(x is not None for x in [
-            CreatePostSchema, UpdatePostSchema, PatchPostSchema,
-            CreateUserSchema, UpdateUserSchema,
-            CreateTodoSchema, UpdateTodoSchema,
-        ])
+
+        assert all(
+            x is not None
+            for x in [
+                CreatePostSchema,
+                UpdatePostSchema,
+                PatchPostSchema,
+                CreateUserSchema,
+                UpdateUserSchema,
+                CreateTodoSchema,
+                UpdateTodoSchema,
+            ]
+        )
 
 
 class TestApiService:
@@ -791,14 +813,25 @@ class TestApiService:
             UpdatePostSchema,
             UserModel,
         )
-        assert all(x is not None for x in [
-            ApiClient, BaseService, JSONPlaceholderService,
-            PostModel, UserModel, TodoModel,
-            CreatePostSchema, UpdatePostSchema, PatchPostSchema,
-        ])
+
+        assert all(
+            x is not None
+            for x in [
+                ApiClient,
+                BaseService,
+                JSONPlaceholderService,
+                PostModel,
+                UserModel,
+                TodoModel,
+                CreatePostSchema,
+                UpdatePostSchema,
+                PatchPostSchema,
+            ]
+        )
 
     def test_utils_exports(self):
         from utils import AllureManager, DataGenerator, Helpers, LoggerConfig, ScreenshotManager, log
+
         assert LoggerConfig is not None
         assert log is not None
         assert AllureManager is not None
@@ -882,10 +915,12 @@ class TestScreenshotManager:
 
         # Create an "old" file by backdating its mtime
         import time as t
+
         old_file = tmp_path / "old.png"
         old_file.touch()
         old_mtime = t.time() - (31 * 86400)
         import os
+
         os.utime(str(old_file), (old_mtime, old_mtime))
 
         removed = mgr.cleanup(max_age_days=30)
@@ -1074,6 +1109,7 @@ class TestRetryDecorators:
             call_count += 1
             if call_count < 2:
                 from selenium.common.exceptions import StaleElementReferenceException
+
                 raise StaleElementReferenceException("stale")
             return "success"
 
@@ -1234,6 +1270,7 @@ class TestRetryCall:
             call_count += 1
             if call_count < 2:
                 from selenium.common.exceptions import StaleElementReferenceException
+
                 raise StaleElementReferenceException("gone")
             return "recovered"
 
@@ -1354,6 +1391,7 @@ class TestRetryHandler:
             call_count += 1
             if call_count < 2:
                 from selenium.common.exceptions import StaleElementReferenceException
+
                 raise StaleElementReferenceException("stale")
             return "ok"
 

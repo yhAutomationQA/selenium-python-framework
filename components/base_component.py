@@ -58,7 +58,10 @@ class BaseComponent:
         return self
 
     def fill(
-        self, locator: Tuple[str, str], text: str, clear_first: bool = True,
+        self,
+        locator: Tuple[str, str],
+        text: str,
+        clear_first: bool = True,
         timeout: Optional[int] = None,
     ) -> "BaseComponent":
         self._actions.type(locator, text, clear_first=clear_first, timeout=timeout)
@@ -73,7 +76,9 @@ class BaseComponent:
         return self
 
     def scroll_to(
-        self, locator: Tuple[str, str], block: str = "center",
+        self,
+        locator: Tuple[str, str],
+        block: str = "center",
         timeout: Optional[int] = None,
     ) -> "BaseComponent":
         self._actions.scroll_to(locator, block=block, timeout=timeout)
@@ -101,21 +106,27 @@ class BaseComponent:
         return self._actions.get_elements(locator, timeout)
 
     def select_option_by_text(
-        self, locator: Tuple[str, str], text: str,
+        self,
+        locator: Tuple[str, str],
+        text: str,
         timeout: Optional[int] = None,
     ) -> "BaseComponent":
         self._actions.select_dropdown(locator, text, by=SelectBy.TEXT, timeout=timeout)
         return self
 
     def select_option_by_value(
-        self, locator: Tuple[str, str], value: str,
+        self,
+        locator: Tuple[str, str],
+        value: str,
         timeout: Optional[int] = None,
     ) -> "BaseComponent":
         self._actions.select_dropdown(locator, value, by=SelectBy.VALUE, timeout=timeout)
         return self
 
     def select_option_by_index(
-        self, locator: Tuple[str, str], index: int,
+        self,
+        locator: Tuple[str, str],
+        index: int,
         timeout: Optional[int] = None,
     ) -> "BaseComponent":
         self._actions.select_dropdown(locator, index, by=SelectBy.INDEX, timeout=timeout)

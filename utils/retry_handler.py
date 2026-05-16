@@ -234,8 +234,7 @@ def _before_retry_log(retry_state: Any) -> None:
     wait_next = retry_state.next_action.sleep if retry_state.next_action else 0
 
     log.warning(
-        "Retry attempt {attempt}/{max} for '{fn}' failed: {exc}. "
-        "Retrying in {wait:.2f}s...",
+        "Retry attempt {attempt}/{max} for '{fn}' failed: {exc}. Retrying in {wait:.2f}s...",
         attempt=attempt,
         max=getattr(retry_state.idle_for, "max", "?"),
         fn=fn_name,

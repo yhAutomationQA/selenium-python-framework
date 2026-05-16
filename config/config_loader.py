@@ -14,9 +14,7 @@ def resolve_env(env: str | None = None) -> str:
     env = env or os.getenv("ENV") or "qa"
     env = env.lower().strip()
     if env not in _SUPPORTED_ENVS:
-        raise ValueError(
-            f"Unsupported environment: '{env}'. Must be one of {sorted(_SUPPORTED_ENVS)}"
-        )
+        raise ValueError(f"Unsupported environment: '{env}'. Must be one of {sorted(_SUPPORTED_ENVS)}")
     return env
 
 

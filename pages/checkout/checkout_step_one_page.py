@@ -1,4 +1,3 @@
-
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from pages.base_page import BasePage
@@ -37,9 +36,7 @@ class CheckoutStepOnePage(BasePage):
         self.fill(self._loc.POSTAL_CODE_INPUT, postal_code)
         return self
 
-    def fill_information(
-        self, first_name: str, last_name: str, postal_code: str
-    ) -> "CheckoutStepOnePage":
+    def fill_information(self, first_name: str, last_name: str, postal_code: str) -> "CheckoutStepOnePage":
         """Fill all required checkout fields and submit.
 
         Args:

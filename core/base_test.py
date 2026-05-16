@@ -23,6 +23,7 @@ class BaseTest:
 
     def capture_screenshot(self, name: str) -> str:
         from pathlib import Path
+
         screenshot_dir = Path("screenshots")
         screenshot_dir.mkdir(exist_ok=True)
         filepath = screenshot_dir / f"{name}.png"

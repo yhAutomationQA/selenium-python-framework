@@ -133,8 +133,10 @@ class ElementWaits:
         timeout: Optional[int] = None,
     ) -> bool:
         return self._wait(timeout).until(
-            lambda d: d.find_element(*locator).get_attribute(attribute)
-            and value in d.find_element(*locator).get_attribute(attribute),
+            lambda d: (
+                d.find_element(*locator).get_attribute(attribute)
+                and value in d.find_element(*locator).get_attribute(attribute)
+            ),
             f"Attribute '{attribute}' does not contain '{value}' in {locator}",
         )
 

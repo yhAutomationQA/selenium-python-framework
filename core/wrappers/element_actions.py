@@ -103,7 +103,10 @@ class ElementActions:
         if isinstance(exc, StaleElementReferenceException):
             logger.warning(
                 "Stale element [%s] on '%s' attempt %d/%d",
-                target, action, attempt, MAX_RETRY_ATTEMPTS,
+                target,
+                action,
+                attempt,
+                MAX_RETRY_ATTEMPTS,
             )
             return True  # retry
 
@@ -156,16 +159,12 @@ class ElementActions:
                 last_exception = e
                 logger.error("Element not found for '%s' [%s]: %s", action_name, target, e)
                 self._screenshot(f"{action_name}_not_found")
-                raise ElementActionsError(
-                    f"Failed to {action_name}: element not found {target}"
-                ) from e
+                raise ElementActionsError(f"Failed to {action_name}: element not found {target}") from e
             except WebDriverException as e:
                 last_exception = e
                 logger.error("WebDriver error on '%s' [%s]: %s", action_name, target, e)
                 self._screenshot(f"{action_name}_error")
-                raise ElementActionsError(
-                    f"Failed to {action_name}: {e}"
-                ) from e
+                raise ElementActionsError(f"Failed to {action_name}: {e}") from e
 
         self._screenshot(f"{action_name}_failed")
         raise ElementActionsError(
@@ -174,9 +173,11 @@ class ElementActions:
 
     def click(self, target: Union[Tuple[str, str], WebElement], timeout: Optional[int] = None) -> "ElementActions":
         self._log_action("click", target)
+
         def _action():
             element = self._resolve_clickable(target, timeout)
             element.click()
+
         self._execute(_action, target, "click", timeout)
         return self
 
@@ -188,27 +189,33 @@ class ElementActions:
         timeout: Optional[int] = None,
     ) -> "ElementActions":
         self._log_action("type", target, f"text='{text}' clear={clear_first}")
+
         def _action():
             element = self._resolve_visible(target, timeout)
             if clear_first:
                 element.clear()
             element.send_keys(text)
+
         self._execute(_action, target, "type", timeout)
         return self
 
     def clear(self, target: Union[Tuple[str, str], WebElement], timeout: Optional[int] = None) -> "ElementActions":
         self._log_action("clear", target)
+
         def _action():
             element = self._resolve_visible(target, timeout)
             element.clear()
+
         self._execute(_action, target, "clear", timeout)
         return self
 
     def hover(self, target: Union[Tuple[str, str], WebElement], timeout: Optional[int] = None) -> "ElementActions":
         self._log_action("hover", target)
+
         def _action():
             element = self._resolve_visible(target, timeout)
             ActionChains(self._driver).move_to_element(element).perform()
+
         self._execute(_action, target, "hover", timeout)
         return self
 
@@ -229,10 +236,12 @@ class ElementActions:
         timeout: Optional[int] = None,
     ) -> "ElementActions":
         self._log_action("drag_and_drop", source, f"target={target}")
+
         def _action():
             src_el = self._resolve_visible(source, timeout)
             tgt_el = self._resolve_visible(target, timeout)
             ActionChains(self._driver).drag_and_drop(src_el, tgt_el).perform()
+
         self._execute(_action, source, "drag_and_drop", timeout)
         return self
 
@@ -244,9 +253,11 @@ class ElementActions:
         timeout: Optional[int] = None,
     ) -> "ElementActions":
         self._log_action("drag_and_drop_by_offset", source, f"x={x_offset} y={y_offset}")
+
         def _action():
             element = self._resolve_visible(source, timeout)
             ActionChains(self._driver).drag_and_drop_by_offset(element, x_offset, y_offset).perform()
+
         self._execute(_action, source, "drag_and_drop_by_offset", timeout)
         return self
 
@@ -258,6 +269,7 @@ class ElementActions:
         timeout: Optional[int] = None,
     ) -> "ElementActions":
         self._log_action("select_dropdown", target, f"by={by} value={value}")
+
         def _action():
             element = self._resolve(target, timeout)
             select = Select(element)
@@ -269,6 +281,7 @@ class ElementActions:
                 select.select_by_index(int(value))
             else:
                 raise ValueError(f"Unsupported SelectBy: {by}")
+
         self._execute(_action, target, "select_dropdown", timeout)
         return self
 
@@ -283,9 +296,7 @@ class ElementActions:
             return self._waits.for_visibility(target, t)
         except TimeoutException as e:
             self._screenshot("wait_visibility_timeout")
-            raise ElementActionsError(
-                f"Element not visible: {target} after {t}s"
-            ) from e
+            raise ElementActionsError(f"Element not visible: {target} after {t}s") from e
 
     def wait_for_clickable(
         self,
@@ -298,9 +309,7 @@ class ElementActions:
             return self._waits.for_clickable(target, t)
         except TimeoutException as e:
             self._screenshot("wait_clickable_timeout")
-            raise ElementActionsError(
-                f"Element not clickable: {target} after {t}s"
-            ) from e
+            raise ElementActionsError(f"Element not clickable: {target} after {t}s") from e
 
     def wait_for_text(
         self,
@@ -398,7 +407,8 @@ class ElementActions:
         return self._waits.for_all_visible(locator, timeout)
 
     def javascript_click(
-        self, target: Union[Tuple[str, str], WebElement],
+        self,
+        target: Union[Tuple[str, str], WebElement],
         timeout: Optional[int] = None,
     ) -> "ElementActions":
         self._log_action("javascript_click", target)

@@ -34,11 +34,7 @@ class InventoryPage(BasePage):
 
     def get_item_names(self) -> List[str]:
         """Return the display names of all visible products."""
-        return [
-            el.text.strip()
-            for el in self.find_elements(self._loc.ITEM_NAME)
-            if el.text.strip()
-        ]
+        return [el.text.strip() for el in self.find_elements(self._loc.ITEM_NAME) if el.text.strip()]
 
     def get_item_prices(self) -> List[float]:
         """Return all product prices as floats, stripped of currency symbols."""

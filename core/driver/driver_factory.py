@@ -19,7 +19,6 @@ logger = logging.getLogger(__name__)
 
 
 class DriverFactory:
-
     @staticmethod
     def create_driver(
         browser: str = "chrome",

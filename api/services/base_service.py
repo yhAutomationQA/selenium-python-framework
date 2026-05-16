@@ -57,5 +57,6 @@ class BaseService:
 
     def _exists(self, resource_id: int) -> bool:
         from requests import Response
+
         response: Response = self.client.get(f"{self._resource}/{resource_id}")
         return response.ok

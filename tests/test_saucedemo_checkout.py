@@ -41,17 +41,13 @@ class TestCheckoutStepOne:
 
     def test_continue_with_first_name_only(self, driver, base_url):
         checkout = CheckoutFlow(driver, base_url)
-        checkout.navigate_to_step_one().fill_shipping_information(
-            "Test", "", ""
-        ).continue_to_overview()
+        checkout.navigate_to_step_one().fill_shipping_information("Test", "", "").continue_to_overview()
         assert checkout.is_error_displayed
         assert CHECKOUT_ERROR_LAST_NAME in checkout.error_message
 
     def test_continue_with_name_no_postal(self, driver, base_url):
         checkout = CheckoutFlow(driver, base_url)
-        checkout.navigate_to_step_one().fill_shipping_information(
-            "Test", "User", ""
-        ).continue_to_overview()
+        checkout.navigate_to_step_one().fill_shipping_information("Test", "User", "").continue_to_overview()
         assert checkout.is_error_displayed
         assert CHECKOUT_ERROR_POSTAL_CODE in checkout.error_message
 
@@ -66,9 +62,7 @@ class TestCheckoutStepOne:
 class TestCheckoutStepTwo:
     @pytest.fixture(autouse=True)
     def reach_overview(self, driver, base_url):
-        CartFlow(driver, base_url).add_item(
-            BACKPACK
-        ).navigate_to_cart().proceed_to_checkout()
+        CartFlow(driver, base_url).add_item(BACKPACK).navigate_to_cart().proceed_to_checkout()
         CheckoutFlow(driver, base_url).fill_shipping_with_defaults().continue_to_overview()
         yield
 

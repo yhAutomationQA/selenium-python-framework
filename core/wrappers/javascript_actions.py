@@ -65,9 +65,7 @@ class JavaScriptActions:
         timeout: Optional[int] = None,
     ) -> None:
         element = self._resolve(target, timeout)
-        original_style = self._execute(
-            "arguments[0].getAttribute('style');", element
-        )
+        original_style = self._execute("arguments[0].getAttribute('style');", element)
         self._execute(
             "arguments[0].setAttribute('style', arguments[1]);",
             element,

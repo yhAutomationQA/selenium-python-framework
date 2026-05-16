@@ -38,11 +38,13 @@ class ApiClient:
         self.retry_count = retry_count
         self.retry_delay = retry_delay
         self.session = Session()
-        self.session.headers.update({
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            **(headers or {}),
-        })
+        self.session.headers.update(
+            {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                **(headers or {}),
+            }
+        )
         self._request_id = 0
 
     # ── Public HTTP Methods ───────────────────────────────────────
@@ -215,16 +217,26 @@ class ApiClient:
             except (ConnectionError, Timeout) as exc:
                 last_error = exc
                 if attempt < self.retry_count:
-                    wait = self.retry_delay * (2 ** attempt)
+                    wait = self.retry_delay * (2**attempt)
                     logger.warning(
                         "[%d] %s %s failed (attempt %d/%d): %s. Retrying in %.1fs…",
-                        rid, method, url, attempt + 1, self.retry_count + 1, exc, wait,
+                        rid,
+                        method,
+                        url,
+                        attempt + 1,
+                        self.retry_count + 1,
+                        exc,
+                        wait,
                     )
                     time.sleep(wait)
                 else:
                     logger.error(
                         "[%d] %s %s failed after %d attempts: %s",
-                        rid, method, url, self.retry_count + 1, exc,
+                        rid,
+                        method,
+                        url,
+                        self.retry_count + 1,
+                        exc,
                     )
 
         raise last_error  # type: ignore[misc]

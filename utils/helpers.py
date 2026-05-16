@@ -6,7 +6,6 @@ import yaml
 
 
 class Helpers:
-
     @staticmethod
     def load_json(filepath: str) -> Dict[str, Any]:
         with open(filepath, "r") as f:
