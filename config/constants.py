@@ -36,6 +36,12 @@ class DriverPath(str, Enum):
     EDGE = "edge"
 
 
+class SelectBy(str, Enum):
+    TEXT = "text"
+    VALUE = "value"
+    INDEX = "index"
+
+
 class Directory:
     REPORTS = "reports"
     SCREENSHOTS = "screenshots"
