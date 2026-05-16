@@ -3,9 +3,12 @@ import logging
 import os
 from typing import Generator
 from selenium.webdriver.remote.webdriver import WebDriver
-from core.driver_factory import DriverFactory
+
 from config.config_loader import load_settings, resolve_env
 from config.settings import Settings
+from core.driver.browser_options import BrowserOptionsFactory
+from core.driver.driver_factory import DriverFactory
+from core.driver.driver_manager import DriverManager
 
 
 def pytest_addoption(parser):
@@ -29,6 +32,12 @@ def pytest_addoption(parser):
         default=None,
         help="Run browser in headless mode (overrides .env file)",
     )
+    parser.addoption(
+        "--incognito",
+        action="store_true",
+        default=None,
+        help="Run browser in incognito/private mode (overrides .env file)",
+    )
 
 
 @pytest.fixture(scope="session")
@@ -38,11 +47,14 @@ def settings(request) -> Settings:
 
     cli_browser = request.config.getoption("--browser")
     cli_headless = request.config.getoption("--headless")
+    cli_incognito = request.config.getoption("--incognito")
 
     if cli_browser is not None:
         settings.browser = cli_browser
     if cli_headless is not None:
         settings.headless = cli_headless
+    if cli_incognito is not None:
+        settings.incognito = cli_incognito
 
     return settings
 
@@ -63,6 +75,11 @@ def headless(settings: Settings) -> bool:
 
 
 @pytest.fixture(scope="session")
+def incognito(settings: Settings) -> bool:
+    return settings.incognito
+
+
+@pytest.fixture(scope="session")
 def base_url(settings: Settings) -> str:
     return settings.base_url
 
@@ -72,17 +89,43 @@ def api_url(settings: Settings) -> str:
     return settings.api_url
 
 
+@pytest.fixture(scope="session")
+def driver_manager() -> Generator[DriverManager, None, None]:
+    manager = DriverManager()
+    yield manager
+    remaining = manager.active_count
+    if remaining > 0:
+        logging.warning("Cleaning up %d remaining driver(s) at session end", remaining)
+        manager.quit_all()
+
+
 @pytest.fixture(scope="function")
-def driver(request, settings: Settings, browser_name: str, headless: bool) -> Generator[WebDriver, None, None]:
-    driver_instance = DriverFactory.create_driver(
+def driver(
+    settings: Settings,
+    browser_name: str,
+    headless: bool,
+    incognito: bool,
+    driver_manager: DriverManager,
+) -> Generator[WebDriver, None, None]:
+    options = BrowserOptionsFactory.create_options(
         browser=browser_name,
         headless=headless,
+        incognito=incognito,
+        download_dir=settings.webdriver_download_path,
+    )
+    driver_instance = DriverFactory.create_driver(
+        browser=browser_name,
+        options=options,
+        remote_url=settings.webdriver_remote_url,
         page_load_timeout=settings.page_load_timeout,
         implicit_wait=settings.implicit_wait,
     )
     driver_instance.maximize_window()
+    driver_manager.register(driver_instance)
+
     yield driver_instance
-    driver_instance.quit()
+
+    driver_manager.quit(driver_instance)
 
 
 @pytest.fixture(autouse=True)

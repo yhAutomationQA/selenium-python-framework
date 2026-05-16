@@ -11,6 +11,7 @@ class Settings(BaseSettings):
 
     browser: str = Field(default="chrome")
     headless: bool = Field(default=False)
+    incognito: bool = Field(default=False)
     browser_timeout: int = Field(default=30, ge=5, le=300)
     implicit_wait: int = Field(default=10, ge=0, le=120)
     explicit_wait: int = Field(default=15, ge=0, le=120)
