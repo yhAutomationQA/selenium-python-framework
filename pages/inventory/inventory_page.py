@@ -145,7 +145,7 @@ class InventoryPage(BasePage):
     def logout(self) -> "InventoryPage":
         """Open the sidebar and click the logout link."""
         self.open_burger_menu()
-        self.click(self._loc.LOGOUT_SIDEBAR_LINK)
+        self.js_click(self._loc.LOGOUT_SIDEBAR_LINK)
         return self
 
     def reset_app_state(self) -> "InventoryPage":

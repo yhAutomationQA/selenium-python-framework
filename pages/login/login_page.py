@@ -68,14 +68,17 @@ class LoginPage(BasePage):
 
     def close_error_message(self) -> "LoginPage":
         """Dismiss the error message by clicking the close button."""
-        if self.is_displayed(self._locators.ERROR_CLOSE_BUTTON):
+        if self.is_displayed(self._locators.ERROR_CLOSE_BUTTON, timeout=3):
             self.click(self._locators.ERROR_CLOSE_BUTTON)
-            self.wait_until_hidden(self._locators.ERROR_CONTAINER)
         return self
 
-    def is_error_displayed(self) -> bool:
-        """Check whether the error message container is visible."""
-        return self.is_displayed(self._locators.ERROR_CONTAINER)
+    def is_error_displayed(self, timeout: int = 2) -> bool:
+        """Check whether the error message text is visible.
+
+        Args:
+            timeout: Seconds to wait for the element to appear (default 2).
+        """
+        return self.is_displayed(self._locators.ERROR_TEXT, timeout=timeout)
 
     def get_title_text(self) -> str:
         """Return the page title text."""

@@ -1,3 +1,5 @@
+from selenium.webdriver.support.ui import WebDriverWait
+
 from flows.base_flow import BaseFlow
 from flows.flow_utils import (
     ERROR_USER,
@@ -62,6 +64,7 @@ class LoginFlow(BaseFlow):
 
     def logout(self) -> "LoginFlow":
         self._inventory_page.logout()
+        WebDriverWait(self.driver, self.timeout).until(lambda d: "inventory" not in (d.current_url or ""))
         return self
 
     def dismiss_error(self) -> "LoginFlow":
