@@ -18,7 +18,8 @@ class TestLoginPositive:
     def test_valid_login(self, driver, base_url):
         flow = LoginFlow(driver, base_url)
         flow.login_as_standard_user()
-        assert flow.current_page.get_title_text() == INVENTORY_TITLE
+        assert flow.is_logged_in
+        assert flow.inventory_page.get_page_title() == INVENTORY_TITLE
 
     def test_logout(self, driver, base_url):
         flow = LoginFlow(driver, base_url)

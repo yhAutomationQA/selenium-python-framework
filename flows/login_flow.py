@@ -83,5 +83,9 @@ class LoginFlow(BaseFlow):
         return self._login_page
 
     @property
+    def inventory_page(self) -> InventoryPage:
+        return self._inventory_page
+
+    @property
     def is_logged_in(self) -> bool:
         return "inventory" in self.driver.current_url

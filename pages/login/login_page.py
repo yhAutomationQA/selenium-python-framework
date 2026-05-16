@@ -70,6 +70,7 @@ class LoginPage(BasePage):
         """Dismiss the error message by clicking the close button."""
         if self.is_displayed(self._locators.ERROR_CLOSE_BUTTON):
             self.click(self._locators.ERROR_CLOSE_BUTTON)
+            self.wait_until_hidden(self._locators.ERROR_CONTAINER)
         return self
 
     def is_error_displayed(self) -> bool:
