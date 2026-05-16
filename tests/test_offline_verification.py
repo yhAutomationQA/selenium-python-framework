@@ -3,7 +3,7 @@
 Marked with @pytest.mark.offline. Run with: pytest -m offline
 Verifies page objects, locators, and flows are correctly defined.
 """
-from unittest.mock import MagicMock, PropertyMock
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
@@ -603,3 +603,195 @@ class TestPageMethodSignatures:
             if hasattr(page, "open"):
                 result = page.open("https://example.com")
                 assert result is page, f"{page_cls.__name__}.open() should return self"
+
+
+class TestApiClientStructure:
+    def test_api_client_instantiation(self):
+        from api.client import ApiClient
+
+        client = ApiClient(base_url="https://example.com", timeout=10)
+        assert client.base_url == "https://example.com"
+        assert client.timeout == 10
+        assert client.retry_count == 0
+        client.close()
+
+    def test_api_client_has_http_methods(self):
+        from api.client import ApiClient
+
+        client = ApiClient("https://example.com")
+        assert callable(client.get)
+        assert callable(client.post)
+        assert callable(client.put)
+        assert callable(client.patch)
+        assert callable(client.delete)
+        client.close()
+
+    def test_api_client_response_helpers(self):
+        from api.client.api_client import ApiClient
+
+        assert callable(ApiClient.raise_for_status)
+        assert callable(ApiClient.json_body)
+        assert callable(ApiClient.json_list)
+        assert callable(ApiClient.json_dict)
+        assert callable(ApiClient.status_ok)
+
+    def test_api_client_has_header_methods(self):
+        from api.client import ApiClient
+
+        client = ApiClient("https://example.com")
+        result = client.set_header("X-Test", "value")
+        assert result is client
+        result2 = client.set_auth_token("token")
+        assert result2 is client
+        assert client.session.headers.get("Authorization") == "Bearer token"
+        client.close()
+
+
+class TestApiModels:
+    def test_post_model(self):
+        from api.models import PostModel
+
+        post = PostModel.model_validate({
+            "id": 1,
+            "userId": 1,
+            "title": "Test Title",
+            "body": "Test body content.",
+        })
+        assert post.id == 1
+        assert post.user_id == 1
+        assert post.title == "Test Title"
+
+    def test_user_model(self):
+        from api.models import UserModel
+
+        user = UserModel.model_validate({
+            "id": 1,
+            "name": "John Doe",
+            "username": "johndoe",
+            "email": "john@example.com",
+        })
+        assert user.id == 1
+        assert user.name == "John Doe"
+        assert "@" in user.email
+
+    def test_todo_model(self):
+        from api.models import TodoModel
+
+        todo = TodoModel.model_validate({
+            "id": 1,
+            "userId": 1,
+            "title": "Test Todo",
+            "completed": False,
+        })
+        assert todo.id == 1
+        assert todo.completed is False
+        assert todo.title == "Test Todo"
+
+    def test_all_model_exports(self):
+        from api.models import PostModel, UserModel, TodoModel, AddressModel, CompanyModel, GeoModel
+        assert PostModel is not None
+        assert UserModel is not None
+        assert TodoModel is not None
+        assert AddressModel is not None
+
+
+class TestApiSchemas:
+    def test_create_post_schema(self):
+        from api.schemas import CreatePostSchema
+
+        schema = CreatePostSchema(title="New Post", body="Content", userId=1)
+        dumped = schema.model_dump(by_alias=True)
+        assert dumped["title"] == "New Post"
+        assert dumped["userId"] == 1
+
+    def test_update_post_schema(self):
+        from api.schemas import UpdatePostSchema
+
+        schema = UpdatePostSchema(id=1, title="Updated", body="Body", userId=1)
+        assert schema.title == "Updated"
+
+    def test_patch_post_schema(self):
+        from api.schemas import PatchPostSchema
+
+        schema = PatchPostSchema(title="Only Title")
+        assert schema.title == "Only Title"
+        assert schema.body is None
+
+    def test_create_user_schema(self):
+        from api.schemas import CreateUserSchema
+
+        schema = CreateUserSchema(
+            name="Test User", username="testuser", email="test@example.com"
+        )
+        assert schema.email == "test@example.com"
+
+    def test_create_todo_schema(self):
+        from api.schemas import CreateTodoSchema
+
+        schema = CreateTodoSchema(title="Todo", userId=1)
+        assert schema.title == "Todo"
+        assert schema.completed is False
+
+    def test_schema_exports(self):
+        from api.schemas import (
+            CreatePostSchema, UpdatePostSchema, PatchPostSchema,
+            CreateUserSchema, UpdateUserSchema,
+            CreateTodoSchema, UpdateTodoSchema,
+        )
+        assert all(x is not None for x in [
+            CreatePostSchema, UpdatePostSchema, PatchPostSchema,
+            CreateUserSchema, UpdateUserSchema,
+            CreateTodoSchema, UpdateTodoSchema,
+        ])
+
+
+class TestApiService:
+    def test_base_service_has_crud_helpers(self):
+        from api.client import ApiClient
+        from api.services import BaseService
+
+        client = ApiClient("https://example.com")
+        service = BaseService(client)
+        assert callable(service._list)
+        assert callable(service._get)
+        assert callable(service._create)
+        assert callable(service._update)
+        assert callable(service._delete)
+        client.close()
+
+    def test_jsonplaceholder_service_has_typed_methods(self):
+        from api.client import ApiClient
+        from api.services import JSONPlaceholderService
+
+        client = ApiClient("https://jsonplaceholder.typicode.com")
+        service = JSONPlaceholderService(client)
+        assert callable(service.list_posts)
+        assert callable(service.get_post)
+        assert callable(service.create_post)
+        assert callable(service.update_post)
+        assert callable(service.delete_post)
+        assert callable(service.list_users)
+        assert callable(service.get_user)
+        assert callable(service.list_todos)
+        assert callable(service.get_todo)
+        client.close()
+
+    def test_api_init_exports(self):
+        from api import (
+            ApiClient, BaseService, JSONPlaceholderService,
+            PostModel, UserModel, TodoModel,
+            CreatePostSchema, UpdatePostSchema, PatchPostSchema,
+        )
+        assert all(x is not None for x in [
+            ApiClient, BaseService, JSONPlaceholderService,
+            PostModel, UserModel, TodoModel,
+            CreatePostSchema, UpdatePostSchema, PatchPostSchema,
+        ])
+
+    def test_retry_on_connection_error_falls_through(self):
+        from api.client.api_client import ApiClient
+
+        client = ApiClient("https://nonexistent.domain.test", timeout=1, retry_count=2, retry_delay=0.1)
+        with pytest.raises(Exception):
+            client.get("/test")
+        client.close()
