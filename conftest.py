@@ -236,7 +236,9 @@ def attach_on_failure(
     if request.node.rep_call.failed if hasattr(request.node, "rep_call") else False:
         test_name = request.node.name
         exc = None
-        if hasattr(request.node, "rep_call") and request.node.rep_call.excinfo is not None:
-            exc = request.node.rep_call.excinfo.value
+        rep = getattr(request.node, "rep_call", None)
+        exc_info = getattr(rep, "excinfo", None)
+        if exc_info is not None:
+            exc = exc_info.value
 
         screenshot_manager.capture_on_failure(driver, test_name, exception=exc)

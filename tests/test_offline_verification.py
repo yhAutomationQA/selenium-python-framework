@@ -946,3 +946,446 @@ class TestAllureManager:
         with pytest.raises(Exception):
             client.get("/test")
         client.close()
+
+
+class TestRetryConfig:
+    def test_default_instantiation(self):
+        from utils.retry_handler import RetryConfig
+
+        cfg = RetryConfig()
+        assert cfg.attempts == 3
+        assert cfg.min_wait == 0.5
+        assert cfg.max_wait == 10.0
+        assert cfg.wait_strategy == "exponential"
+        assert cfg.exceptions is None
+        assert cfg.jitter is True
+        assert cfg.reraise is True
+
+    def test_custom_config(self):
+        from utils.retry_handler import RetryConfig
+
+        cfg = RetryConfig(
+            attempts=5,
+            min_wait=1.0,
+            max_wait=15.0,
+            wait_strategy="fixed",
+            exceptions=(ValueError, TypeError),
+            jitter=False,
+            reraise=False,
+        )
+        assert cfg.attempts == 5
+        assert cfg.min_wait == 1.0
+        assert cfg.wait_strategy == "fixed"
+        assert cfg.exceptions == (ValueError, TypeError)
+        assert cfg.jitter is False
+
+    def test_copy_with(self):
+        from utils.retry_handler import RetryConfig
+
+        cfg = RetryConfig(attempts=3, min_wait=0.5)
+        copied = cfg.copy_with(attempts=10, min_wait=2.0)
+        assert copied.attempts == 10
+        assert copied.min_wait == 2.0
+        assert copied.max_wait == cfg.max_wait
+        assert copied is not cfg
+
+    def test_repr(self):
+        from utils.retry_handler import RetryConfig
+
+        cfg = RetryConfig(attempts=3)
+        r = repr(cfg)
+        assert "RetryConfig" in r
+        assert "attempts=3" in r
+
+
+class TestRetryPresets:
+    def test_stale_element_preset(self):
+        from utils.retry_handler import STALE_ELEMENT_CONFIG, RetryMode
+
+        cfg = STALE_ELEMENT_CONFIG
+        assert cfg.attempts == 3
+        assert cfg.wait_strategy == "fixed"
+        assert cfg.exceptions is not None
+        assert "StaleElementReferenceException" in str(cfg.exceptions[0])
+        assert cfg.reraise is True
+
+    def test_flaky_test_preset(self):
+        from utils.retry_handler import FLAKY_TEST_CONFIG
+
+        cfg = FLAKY_TEST_CONFIG
+        assert cfg.attempts == 3
+        assert cfg.exceptions == (AssertionError,)
+        assert cfg.reraise is True
+
+    def test_api_retry_preset(self):
+        from utils.retry_handler import API_RETRY_CONFIG
+
+        cfg = API_RETRY_CONFIG
+        assert cfg.attempts == 3
+        assert cfg.wait_strategy == "random_exponential"
+        assert cfg.exceptions == (ConnectionError, TimeoutError)
+        assert cfg.reraise is True
+
+    def test_smart_wait_preset(self):
+        from utils.retry_handler import SMART_WAIT_CONFIG
+
+        cfg = SMART_WAIT_CONFIG
+        assert cfg.attempts == 5
+        assert cfg.wait_strategy == "exponential"
+        assert cfg.exceptions is None
+        assert cfg.reraise is True
+
+    def test_fast_preset(self):
+        from utils.retry_handler import FAST_CONFIG
+
+        cfg = FAST_CONFIG
+        assert cfg.attempts == 2
+        assert cfg.wait_strategy == "fixed"
+        assert cfg.min_wait == 0.1
+        assert cfg.max_wait == 0.5
+        assert cfg.reraise is True
+
+    def test_presets_dict_contains_all_modes(self):
+        from utils.retry_handler import _PRESETS, RetryMode
+
+        for mode in RetryMode:
+            assert mode in _PRESETS, f"Missing preset for {mode}"
+
+
+class TestRetryDecorators:
+    def test_stale_element_retry_succeeds(self):
+        from utils.retry_handler import stale_element_retry
+
+        call_count = 0
+
+        @stale_element_retry
+        def succeeds_after_stale():
+            nonlocal call_count
+            call_count += 1
+            if call_count < 2:
+                from selenium.common.exceptions import StaleElementReferenceException
+                raise StaleElementReferenceException("stale")
+            return "success"
+
+        result = succeeds_after_stale()
+        assert result == "success"
+        assert call_count == 2
+
+    def test_flaky_test_retry_eventually_passes(self):
+        from utils.retry_handler import flaky_test_retry
+
+        call_count = 0
+
+        @flaky_test_retry
+        def eventually_passes():
+            nonlocal call_count
+            call_count += 1
+            if call_count < 2:
+                raise AssertionError("flaky assertion")
+            return True
+
+        result = eventually_passes()
+        assert result is True
+        assert call_count == 2
+
+    def test_flaky_test_retry_exhaustion(self):
+        from utils.retry_handler import flaky_test_retry
+
+        call_count = 0
+
+        @flaky_test_retry
+        def always_fails():
+            nonlocal call_count
+            call_count += 1
+            raise AssertionError(f"fail {call_count}")
+
+        with pytest.raises(AssertionError, match="fail 3"):
+            always_fails()
+
+    def test_api_retry_on_connection_error(self):
+        from utils.retry_handler import api_retry
+
+        call_count = 0
+
+        @api_retry
+        def succeeds_after_connection_error():
+            nonlocal call_count
+            call_count += 1
+            if call_count < 3:
+                raise ConnectionError("connection refused")
+            return "ok"
+
+        result = succeeds_after_connection_error()
+        assert result == "ok"
+        assert call_count == 3
+
+    def test_retry_decorator_requires_config_or_mode(self):
+        from utils.retry_handler import retry_decorator
+
+        with pytest.raises(ValueError, match="Either 'config' or 'mode' must be provided"):
+            retry_decorator()
+
+    def test_retry_decorator_with_override_kwargs(self):
+        from utils.retry_handler import retry_decorator, RetryMode
+
+        call_count = 0
+
+        @retry_decorator(mode=RetryMode.FAST, attempts=4)
+        def fast_with_more_attempts():
+            nonlocal call_count
+            call_count += 1
+            if call_count < 4:
+                raise ValueError("not yet")
+            return "done"
+
+        result = fast_with_more_attempts()
+        assert result == "done"
+        assert call_count == 4
+
+    def test_smart_retry_decorator(self):
+        from utils.retry_handler import smart_retry
+
+        call_count = 0
+
+        @smart_retry
+        def succeeds_on_third():
+            nonlocal call_count
+            call_count += 1
+            if call_count < 3:
+                raise RuntimeError("not yet")
+            return "ok"
+
+        result = succeeds_on_third()
+        assert result == "ok"
+        assert call_count == 3
+
+
+class TestRetryCall:
+    def test_retry_call_basic(self):
+        from utils.retry_handler import retry_call, RetryMode
+
+        call_count = 0
+
+        def flaky_fn():
+            nonlocal call_count
+            call_count += 1
+            if call_count < 2:
+                raise ValueError("try again")
+            return "done"
+
+        result = retry_call(flaky_fn, mode=RetryMode.FAST)
+        assert result == "done"
+        assert call_count == 2
+
+    def test_retry_call_custom_config(self):
+        from utils.retry_handler import retry_call, RetryConfig
+
+        call_count = 0
+
+        def fails_twice():
+            nonlocal call_count
+            call_count += 1
+            if call_count < 3:
+                raise RuntimeError("not yet")
+            return "ok"
+
+        result = retry_call(
+            fails_twice,
+            config=RetryConfig(attempts=5, wait_strategy="fixed", min_wait=0.01),
+        )
+        assert result == "ok"
+        assert call_count == 3
+
+    def test_retry_call_raises_value_error_without_config(self):
+        from utils.retry_handler import retry_call
+
+        def fn():
+            return "ok"
+
+        with pytest.raises(ValueError, match="Either 'config' or 'mode' must be provided"):
+            retry_call(fn)
+
+    def test_retry_call_passes_args_and_kwargs(self):
+        from utils.retry_handler import retry_call, RetryMode
+
+        def adder(a, b, multiplier=1):
+            return (a + b) * multiplier
+
+        result = retry_call(adder, 2, 3, mode=RetryMode.FAST, multiplier=10)
+        assert result == 50
+
+    def test_retry_call_with_stale_element(self):
+        from utils.retry_handler import retry_call, RetryMode
+
+        call_count = 0
+
+        def unstable():
+            nonlocal call_count
+            call_count += 1
+            if call_count < 2:
+                from selenium.common.exceptions import StaleElementReferenceException
+                raise StaleElementReferenceException("gone")
+            return "recovered"
+
+        result = retry_call(unstable, mode=RetryMode.STALE_ELEMENT)
+        assert result == "recovered"
+        assert call_count == 2
+
+
+class TestRetryHandler:
+    def test_handler_requires_config_or_mode(self):
+        from utils.retry_handler import RetryHandler
+
+        with pytest.raises(ValueError, match="Either 'config' or 'mode' must be provided"):
+            RetryHandler()
+
+    def test_handler_rejects_both_config_and_mode(self):
+        from utils.retry_handler import RetryHandler, RetryMode, RetryConfig
+
+        with pytest.raises(ValueError, match="Provide either 'config' or 'mode', not both"):
+            RetryHandler(config=RetryConfig(), mode=RetryMode.SMART_WAIT)
+
+    def test_handler_with_mode_string(self):
+        from utils.retry_handler import RetryHandler
+
+        handler = RetryHandler(mode="fast")
+        assert handler.mode.value == "fast"
+        assert handler.config.attempts == 2
+
+    def test_handler_with_mode_enum(self):
+        from utils.retry_handler import RetryHandler, RetryMode
+
+        handler = RetryHandler(mode=RetryMode.SMART_WAIT)
+        assert handler.mode == RetryMode.SMART_WAIT
+        assert handler.config.attempts == 5
+
+    def test_handler_with_custom_config(self):
+        from utils.retry_handler import RetryHandler, RetryConfig
+
+        cfg = RetryConfig(attempts=10, wait_strategy="fixed", min_wait=0.5)
+        handler = RetryHandler(config=cfg)
+        assert handler.mode is None
+        assert handler.config.attempts == 10
+        assert handler.config.min_wait == 0.5
+
+    def test_handler_run_success(self):
+        from utils.retry_handler import RetryHandler
+
+        handler = RetryHandler(mode="fast")
+        result = handler.run(lambda x: x + 1, 41)
+        assert result == 42
+
+    def test_handler_run_with_retry(self):
+        from utils.retry_handler import RetryHandler
+
+        call_count = 0
+
+        def flaky():
+            nonlocal call_count
+            call_count += 1
+            if call_count < 3:
+                raise RuntimeError("not yet")
+            return "done"
+
+        handler = RetryHandler(mode="smart_wait")
+        result = handler.run(flaky)
+        assert result == "done"
+        assert call_count == 3
+
+    def test_handler_temporary_config(self):
+        from utils.retry_handler import RetryHandler, RetryMode
+
+        handler = RetryHandler(mode=RetryMode.SMART_WAIT)
+        assert handler.config.attempts == 5
+
+        with handler.temporary_config(mode="fast") as h:
+            assert h.config.attempts == 2
+            result = h.run(lambda: "scoped")
+            assert result == "scoped"
+
+        assert handler.config.attempts == 5
+
+    def test_handler_temporary_config_restores_after_exception(self):
+        from utils.retry_handler import RetryHandler
+
+        handler = RetryHandler(mode="smart_wait")
+        assert handler.config.attempts == 5
+
+        with pytest.raises(ValueError):
+            with handler.temporary_config(mode="fast") as h:
+                raise ValueError("boom")
+
+        assert handler.config.attempts == 5
+
+    def test_handler_repr(self):
+        from utils.retry_handler import RetryHandler
+
+        handler = RetryHandler(mode="smart_wait")
+        r = repr(handler)
+        assert "RetryHandler" in r
+
+    def test_handler_config_setter(self):
+        from utils.retry_handler import RetryHandler, RetryConfig
+
+        handler = RetryHandler(mode="fast")
+        assert handler.config.attempts == 2
+
+        new_cfg = RetryConfig(attempts=99)
+        handler.config = new_cfg
+        assert handler.config.attempts == 99
+
+    def test_handler_run_with_stale_element(self):
+        from utils.retry_handler import RetryHandler
+
+        call_count = 0
+
+        def unstable():
+            nonlocal call_count
+            call_count += 1
+            if call_count < 2:
+                from selenium.common.exceptions import StaleElementReferenceException
+                raise StaleElementReferenceException("stale")
+            return "ok"
+
+        handler = RetryHandler(mode="stale_element")
+        result = handler.run(unstable)
+        assert result == "ok"
+        assert call_count == 2
+
+    def test_handler_temporary_config_with_custom(self):
+        from utils.retry_handler import RetryHandler, RetryConfig
+
+        handler = RetryHandler(mode="smart_wait")
+        custom = RetryConfig(attempts=7, wait_strategy="fixed", min_wait=0.01)
+
+        with handler.temporary_config(config=custom) as h:
+            assert h.config.attempts == 7
+            result = h.run(lambda: True)
+            assert result is True
+
+        assert handler.config.attempts == 5
+
+
+class TestRetryExports:
+    def test_retry_handler_exports_from_utils(self):
+        from utils import (
+            RetryConfig,
+            RetryMode,
+            RetryHandler,
+            retry_decorator,
+            retry_call,
+            stale_element_retry,
+            flaky_test_retry,
+            api_retry,
+            smart_retry,
+        )
+
+        assert RetryConfig is not None
+        assert RetryMode is not None
+        assert RetryHandler is not None
+        assert callable(retry_decorator)
+        assert callable(retry_call)
+        assert callable(stale_element_retry)
+        assert callable(flaky_test_retry)
+        assert callable(api_retry)
+        assert callable(smart_retry)
