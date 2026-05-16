@@ -1,111 +1,110 @@
 import pytest
-from pages.login.login_page import LoginPage
-from pages.inventory.inventory_page import InventoryPage
-from pages.cart.cart_page import CartPage
-from pages.checkout.checkout_step_one_page import CheckoutStepOnePage
-from pages.checkout.checkout_step_two_page import CheckoutStepTwoPage
+
+from flows.flow_utils import (
+    BACKPACK,
+    DEFAULT_FIRST_NAME,
+    DEFAULT_LAST_NAME,
+    DEFAULT_POSTAL_CODE,
+    CHECKOUT_STEP_ONE_TITLE,
+    CHECKOUT_STEP_TWO_TITLE,
+    CHECKOUT_ERROR_FIRST_NAME,
+    CHECKOUT_ERROR_LAST_NAME,
+    CHECKOUT_ERROR_POSTAL_CODE,
+)
+from flows.login_flow import LoginFlow
+from flows.cart_flow import CartFlow
+from flows.checkout_flow import CheckoutFlow
 
 pytestmark = [pytest.mark.ui, pytest.mark.regression]
-
-VALID_USER = "standard_user"
-VALID_PASS = "secret_sauce"
-
-ITEM_1 = "Sauce Labs Backpack"
 
 
 @pytest.fixture(autouse=True)
 def logged_in(driver, base_url):
-    LoginPage(driver).open(base_url).login(VALID_USER, VALID_PASS)
+    LoginFlow(driver, base_url).login_as_standard_user()
     yield
 
 
 class TestCheckoutStepOne:
     def test_page_load(self, driver, base_url):
-        page = CheckoutStepOnePage(driver)
-        page.open(base_url)
+        checkout = CheckoutFlow(driver, base_url)
+        checkout.navigate_to_step_one()
         assert "checkout-step-one" in driver.current_url
-        assert page.get_title_text() == "Checkout: Your Information"
+        assert checkout.step_one_page.get_title_text() == CHECKOUT_STEP_ONE_TITLE
 
     def test_cancel_returns_to_cart(self, driver, base_url):
-        CartPage(driver).open(base_url).click_checkout()
-        CheckoutStepOnePage(driver).click_cancel()
+        CartFlow(driver, base_url).navigate_to_cart().proceed_to_checkout()
+        CheckoutFlow(driver, base_url).cancel_step_one()
         assert "cart" in driver.current_url
 
     def test_continue_with_empty_fields_shows_error(self, driver, base_url):
-        page = CheckoutStepOnePage(driver)
-        page.open(base_url).click_continue()
-        assert page.is_error_displayed()
-        assert "First Name is required" in page.get_error_message()
+        checkout = CheckoutFlow(driver, base_url)
+        checkout.navigate_to_step_one().continue_to_overview()
+        assert checkout.is_error_displayed
+        assert CHECKOUT_ERROR_FIRST_NAME in checkout.error_message
 
     def test_continue_with_first_name_only(self, driver, base_url):
-        page = CheckoutStepOnePage(driver)
-        page.open(base_url).enter_first_name("Test").click_continue()
-        assert page.is_error_displayed()
-        assert "Last Name is required" in page.get_error_message()
+        checkout = CheckoutFlow(driver, base_url)
+        checkout.navigate_to_step_one().fill_shipping_information(
+            "Test", "", ""
+        ).continue_to_overview()
+        assert checkout.is_error_displayed
+        assert CHECKOUT_ERROR_LAST_NAME in checkout.error_message
 
     def test_continue_with_name_no_postal(self, driver, base_url):
-        page = CheckoutStepOnePage(driver)
-        page.open(base_url).fill_information("Test", "User", "").click_continue()
-        assert page.is_error_displayed()
-        assert "Postal Code is required" in page.get_error_message()
+        checkout = CheckoutFlow(driver, base_url)
+        checkout.navigate_to_step_one().fill_shipping_information(
+            "Test", "User", ""
+        ).continue_to_overview()
+        assert checkout.is_error_displayed
+        assert CHECKOUT_ERROR_POSTAL_CODE in checkout.error_message
 
     @pytest.mark.smoke
     def test_valid_information_proceeds_to_overview(self, driver, base_url):
-        InventoryPage(driver).add_item_to_cart(ITEM_1)
-        CartPage(driver).open(base_url).click_checkout()
-        CheckoutStepOnePage(driver).fill_information(
-            "Test", "User", "12345"
-        ).click_continue()
-        overview = CheckoutStepTwoPage(driver)
-        assert overview.get_title_text() == "Checkout: Overview"
+        CartFlow(driver, base_url).add_item(BACKPACK).navigate_to_cart().proceed_to_checkout()
+        checkout = CheckoutFlow(driver, base_url)
+        checkout.fill_shipping_with_defaults().continue_to_overview()
+        assert checkout.step_two_page.get_title_text() == CHECKOUT_STEP_TWO_TITLE
 
 
 class TestCheckoutStepTwo:
     @pytest.fixture(autouse=True)
     def reach_overview(self, driver, base_url):
-        InventoryPage(driver).add_item_to_cart(ITEM_1)
-        CartPage(driver).open(base_url).click_checkout()
-        CheckoutStepOnePage(driver).fill_information(
-            "Test", "User", "12345"
-        ).click_continue()
+        CartFlow(driver, base_url).add_item(
+            BACKPACK
+        ).navigate_to_cart().proceed_to_checkout()
+        CheckoutFlow(driver, base_url).fill_shipping_with_defaults().continue_to_overview()
         yield
 
     def test_overview_page_load(self, driver):
-        overview = CheckoutStepTwoPage(driver)
-        assert overview.get_title_text() == "Checkout: Overview"
-        assert overview.get_item_count() == 1
+        checkout = CheckoutFlow(driver)
+        assert checkout.step_two_page.get_title_text() == CHECKOUT_STEP_TWO_TITLE
+        assert checkout.item_count == 1
 
     def test_overview_item_details(self, driver):
-        overview = CheckoutStepTwoPage(driver)
-        names = overview.get_item_names()
-        assert ITEM_1 in names
-        prices = overview.get_item_prices()
+        checkout = CheckoutFlow(driver)
+        names = checkout.item_names
+        assert BACKPACK in names
+        prices = checkout.item_prices
         assert len(prices) == 1
         assert prices[0] > 0
-        qty = overview.get_item_quantities()
-        assert qty == [1]
+        assert checkout.item_quantities == [1]
 
     def test_overview_totals(self, driver):
-        overview = CheckoutStepTwoPage(driver)
-        subtotal = overview.get_subtotal()
-        tax = overview.get_tax()
-        total = overview.get_total()
-        assert "Item total" in subtotal or "$" in subtotal
-        assert "Tax" in tax or "$" in tax
-        assert "Total" in total or "$" in total
+        checkout = CheckoutFlow(driver)
+        assert "Item total" in checkout.subtotal or "$" in checkout.subtotal
+        assert "Tax" in checkout.tax or "$" in checkout.tax
+        assert "Total" in checkout.total or "$" in checkout.total
 
     def test_payment_and_shipping_info(self, driver):
-        overview = CheckoutStepTwoPage(driver)
-        payment = overview.get_payment_info()
-        shipping = overview.get_shipping_info()
-        assert payment != ""
-        assert shipping != ""
+        checkout = CheckoutFlow(driver)
+        assert checkout.payment_info != ""
+        assert checkout.shipping_info != ""
 
     def test_cancel_from_overview(self, driver):
-        CheckoutStepTwoPage(driver).click_cancel()
+        CheckoutFlow(driver).cancel_step_two()
         assert "inventory" in driver.current_url
 
     @pytest.mark.smoke
     def test_finish_order(self, driver):
-        CheckoutStepTwoPage(driver).click_finish()
+        CheckoutFlow(driver).finish_order()
         assert "checkout-complete" in driver.current_url

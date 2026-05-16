@@ -183,10 +183,35 @@ class TestPageExports:
         assert CheckoutStepTwoPage is not None
 
     def test_flows_init_exports(self):
-        from flows import BaseFlow, CheckoutFlow
+        from flows import BaseFlow, LoginFlow, CartFlow, CheckoutFlow
 
         assert BaseFlow is not None
+        assert LoginFlow is not None
+        assert CartFlow is not None
         assert CheckoutFlow is not None
+    
+    def test_flow_utils_constants(self):
+        from flows.flow_utils import (
+            STANDARD_USER,
+            LOCKED_OUT_USER,
+            VALID_PASSWORD,
+            BACKPACK,
+            BIKE_LIGHT,
+            ALL_ITEMS,
+            DEFAULT_FIRST_NAME,
+            INVENTORY_TITLE,
+            LOGIN_ERROR_MISMATCH,
+        )
+
+        assert STANDARD_USER == "standard_user"
+        assert LOCKED_OUT_USER == "locked_out_user"
+        assert VALID_PASSWORD == "secret_sauce"
+        assert BACKPACK == "Sauce Labs Backpack"
+        assert BIKE_LIGHT == "Sauce Labs Bike Light"
+        assert len(ALL_ITEMS) == 6
+        assert DEFAULT_FIRST_NAME == "Test"
+        assert INVENTORY_TITLE == "Products"
+        assert LOGIN_ERROR_MISMATCH == "Username and password do not match"
 
 
 class TestBasePageMethods:
@@ -312,6 +337,80 @@ class TestPageMethodSignatures:
         assert callable(page.click_finish)
         assert callable(page.click_cancel)
         assert callable(page.get_title_text)
+
+    def test_checkout_flow_named_logins(self, mock_driver):
+        from flows.login_flow import LoginFlow
+
+        flow = LoginFlow(mock_driver, "https://example.com")
+        assert callable(flow.login_as)
+        assert callable(flow.login_as_standard_user)
+        assert callable(flow.login_as_locked_out_user)
+        assert callable(flow.login_as_problem_user)
+        assert callable(flow.login_as_performance_glitch_user)
+        assert callable(flow.login_as_error_user)
+        assert callable(flow.login_as_visual_user)
+        assert callable(flow.attempt_login)
+        assert callable(flow.logout)
+        assert callable(flow.dismiss_error)
+        assert callable(flow.navigate_to_login)
+        assert hasattr(flow, "error_message")
+        assert hasattr(flow, "is_error_displayed")
+
+    def test_cart_flow_methods(self, mock_driver):
+        from flows.cart_flow import CartFlow
+
+        flow = CartFlow(mock_driver)
+        assert callable(flow.add_item)
+        assert callable(flow.add_items)
+        assert callable(flow.add_all_items)
+        assert callable(flow.remove_item)
+        assert callable(flow.remove_all_items)
+        assert callable(flow.navigate_to_cart)
+        assert callable(flow.navigate_to_inventory)
+        assert callable(flow.proceed_to_checkout)
+        assert hasattr(flow, "badge_count")
+        assert hasattr(flow, "item_count")
+        assert hasattr(flow, "item_names")
+        assert hasattr(flow, "item_prices")
+        assert hasattr(flow, "is_empty")
+
+    def test_checkout_flow_methods(self, mock_driver):
+        from flows.checkout_flow import CheckoutFlow
+
+        flow = CheckoutFlow(mock_driver, "https://example.com")
+        assert callable(flow.navigate_to_step_one)
+        assert callable(flow.fill_shipping_information)
+        assert callable(flow.fill_shipping_with_defaults)
+        assert callable(flow.continue_to_overview)
+        assert callable(flow.cancel_step_one)
+        assert callable(flow.cancel_step_two)
+        assert callable(flow.finish_order)
+        assert callable(flow.complete_checkout)
+        assert hasattr(flow, "error_message")
+        assert hasattr(flow, "is_error_displayed")
+        assert hasattr(flow, "item_count")
+        assert hasattr(flow, "subtotal")
+        assert hasattr(flow, "tax")
+        assert hasattr(flow, "total")
+
+    def test_flows_return_self_for_chaining(self, mock_driver):
+        from flows.login_flow import LoginFlow
+        from flows.cart_flow import CartFlow
+        from flows.checkout_flow import CheckoutFlow
+
+        login = LoginFlow(mock_driver)
+        result = login.navigate_to_login()
+        assert result is login
+
+        cart = CartFlow(mock_driver)
+        # add_item throws on mock because find_element returns a mock that
+        # lacks proper .text, so only test non-IO methods
+        result = cart.navigate_to_cart()
+        assert result is cart
+
+        checkout = CheckoutFlow(mock_driver)
+        result = checkout.navigate_to_step_one()
+        assert result is checkout
 
     def test_page_methods_return_self_for_chaining(self, mock_driver):
         from pages.login.login_page import LoginPage

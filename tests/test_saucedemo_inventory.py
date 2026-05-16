@@ -1,60 +1,61 @@
 import pytest
-from pages.login.login_page import LoginPage
+
+from flows.flow_utils import (
+    BACKPACK,
+    BIKE_LIGHT,
+    ALL_ITEMS,
+    INVENTORY_TITLE,
+)
+from flows.login_flow import LoginFlow
+from flows.cart_flow import CartFlow
 from pages.inventory.inventory_page import InventoryPage
 
 pytestmark = [pytest.mark.ui, pytest.mark.regression]
 
-VALID_USER = "standard_user"
-VALID_PASS = "secret_sauce"
-
-ITEM_1 = "Sauce Labs Backpack"
-ITEM_2 = "Sauce Labs Bike Light"
-
 
 @pytest.fixture(autouse=True)
 def logged_in(driver, base_url):
-    LoginPage(driver).open(base_url).login(VALID_USER, VALID_PASS)
+    LoginFlow(driver, base_url).login_as_standard_user()
     yield
 
 
 class TestInventoryAddRemove:
     def test_page_load(self, driver):
         inventory = InventoryPage(driver)
-        assert inventory.get_page_title() == "Products"
+        assert inventory.get_page_title() == INVENTORY_TITLE
         assert len(inventory.get_item_elements()) == 6
 
     def test_add_single_item(self, driver):
-        inventory = InventoryPage(driver)
-        inventory.add_item_to_cart(ITEM_1)
-        assert inventory.get_cart_badge_count() == 1
-        assert inventory.is_item_in_cart(ITEM_1)
+        cart = CartFlow(driver)
+        cart.add_item(BACKPACK)
+        assert cart.badge_count == 1
+        assert cart.inventory_page.is_item_in_cart(BACKPACK)
 
     def test_add_all_items(self, driver):
-        inventory = InventoryPage(driver)
-        inventory.add_all_items_to_cart()
-        assert inventory.get_cart_badge_count() == 6
+        cart = CartFlow(driver)
+        cart.add_all_items()
+        assert cart.badge_count == 6
 
     def test_add_then_remove(self, driver):
-        inventory = InventoryPage(driver)
-        inventory.add_item_to_cart(ITEM_1)
-        assert inventory.get_cart_badge_count() == 1
-        inventory.remove_item_from_cart(ITEM_1)
-        assert inventory.get_cart_badge_count() == 0
-        assert not inventory.is_item_in_cart(ITEM_1)
+        cart = CartFlow(driver)
+        cart.add_item(BACKPACK)
+        assert cart.badge_count == 1
+        cart.remove_item(BACKPACK)
+        assert cart.badge_count == 0
+        assert not cart.inventory_page.is_item_in_cart(BACKPACK)
 
     def test_add_multiple_items_badge_count(self, driver):
-        inventory = InventoryPage(driver)
-        inventory.add_item_to_cart(ITEM_1)
-        inventory.add_item_to_cart(ITEM_2)
-        assert inventory.get_cart_badge_count() == 2
+        cart = CartFlow(driver)
+        cart.add_items(BACKPACK, BIKE_LIGHT)
+        assert cart.badge_count == 2
 
     @pytest.mark.smoke
     def test_reset_app_state_clears_cart(self, driver):
-        inventory = InventoryPage(driver)
-        inventory.add_all_items_to_cart()
-        assert inventory.get_cart_badge_count() == 6
-        inventory.reset_app_state()
-        assert inventory.get_cart_badge_count() == 0
+        cart = CartFlow(driver)
+        cart.add_all_items()
+        assert cart.badge_count == 6
+        cart.inventory_page.reset_app_state()
+        assert cart.badge_count == 0
 
 
 class TestInventorySorting:
@@ -86,7 +87,7 @@ class TestInventorySorting:
 class TestInventoryDetails:
     def test_get_item_details_returns_correct_data(self, driver):
         inventory = InventoryPage(driver)
-        details = inventory.get_item_details(ITEM_1)
+        details = inventory.get_item_details(BACKPACK)
         assert details is not None
         assert "description" in details
         assert "price" in details

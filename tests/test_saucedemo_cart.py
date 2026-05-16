@@ -1,20 +1,16 @@
 import pytest
-from pages.login.login_page import LoginPage
-from pages.inventory.inventory_page import InventoryPage
+
+from flows.flow_utils import BACKPACK, BIKE_LIGHT
+from flows.login_flow import LoginFlow
+from flows.cart_flow import CartFlow
 from pages.cart.cart_page import CartPage
 
 pytestmark = [pytest.mark.ui, pytest.mark.regression]
 
-VALID_USER = "standard_user"
-VALID_PASS = "secret_sauce"
-
-ITEM_1 = "Sauce Labs Backpack"
-ITEM_2 = "Sauce Labs Bike Light"
-
 
 @pytest.fixture(autouse=True)
 def logged_in(driver, base_url):
-    LoginPage(driver).open(base_url).login(VALID_USER, VALID_PASS)
+    LoginFlow(driver, base_url).login_as_standard_user()
     yield
 
 
@@ -34,68 +30,63 @@ class TestCartEmpty:
 class TestCartWithItems:
     @pytest.fixture(autouse=True)
     def add_items(self, driver):
-        inventory = InventoryPage(driver)
-        inventory.add_item_to_cart(ITEM_1)
-        inventory.add_item_to_cart(ITEM_2)
+        CartFlow(driver).add_items(BACKPACK, BIKE_LIGHT)
         yield
 
     def test_cart_contains_added_items(self, driver):
-        inventory = InventoryPage(driver)
-        inventory.open_cart()
-        cart = CartPage(driver)
-        names = cart.get_item_names()
-        assert ITEM_1 in names
-        assert ITEM_2 in names
-        assert cart.get_item_count() == 2
+        cart = CartFlow(driver)
+        cart.navigate_to_cart()
+        names = cart.item_names
+        assert BACKPACK in names
+        assert BIKE_LIGHT in names
+        assert cart.item_count == 2
 
     def test_cart_item_quantities(self, driver):
-        InventoryPage(driver).open_cart()
-        cart = CartPage(driver)
-        qty = cart.get_item_quantities()
-        assert len(qty) == 2
-        assert all(q == 1 for q in qty)
+        cart = CartFlow(driver)
+        cart.navigate_to_cart()
+        quantities = cart.item_quantities
+        assert len(quantities) == 2
+        assert all(q == 1 for q in quantities)
 
     def test_cart_item_prices(self, driver):
-        InventoryPage(driver).open_cart()
-        cart = CartPage(driver)
-        prices = cart.get_item_prices()
+        cart = CartFlow(driver)
+        cart.navigate_to_cart()
+        prices = cart.item_prices
         assert len(prices) == 2
         assert all(p > 0 for p in prices)
 
     def test_remove_single_item(self, driver):
-        InventoryPage(driver).open_cart()
-        cart = CartPage(driver)
-        cart.remove_item(ITEM_1)
-        names = cart.get_item_names()
-        assert ITEM_1 not in names
-        assert ITEM_2 in names
-        assert cart.get_item_count() == 1
+        cart = CartFlow(driver)
+        cart.navigate_to_cart()
+        cart.cart_page.remove_item(BACKPACK)
+        names = cart.item_names
+        assert BACKPACK not in names
+        assert BIKE_LIGHT in names
+        assert cart.item_count == 1
 
     def test_remove_all_items(self, driver):
-        InventoryPage(driver).open_cart()
-        cart = CartPage(driver)
+        cart = CartFlow(driver)
+        cart.navigate_to_cart()
         cart.remove_all_items()
-        assert cart.is_empty()
-        assert cart.get_item_count() == 0
+        assert cart.is_empty
+        assert cart.item_count == 0
 
 
 class TestCartNavigation:
     def test_continue_shopping(self, driver):
-        InventoryPage(driver).open_cart()
-        cart = CartPage(driver)
-        cart.click_continue_shopping()
+        cart = CartFlow(driver)
+        cart.navigate_to_cart().navigate_to_inventory()
         assert "inventory" in driver.current_url
 
     @pytest.mark.smoke
     def test_checkout_navigation(self, driver):
-        InventoryPage(driver).open_cart()
-        cart = CartPage(driver)
-        cart.click_checkout()
+        cart = CartFlow(driver)
+        cart.navigate_to_cart().proceed_to_checkout()
         assert "checkout-step-one" in driver.current_url
 
     def test_cart_badge_after_adding_via_inventory(self, driver):
-        inventory = InventoryPage(driver)
-        inventory.add_item_to_cart(ITEM_1)
-        assert inventory.get_cart_badge_count() == 1
-        inventory.open_cart()
-        assert CartPage(driver).get_item_count() == 1
+        cart = CartFlow(driver)
+        cart.add_item(BACKPACK)
+        assert cart.badge_count == 1
+        cart.navigate_to_cart()
+        assert cart.item_count == 1
