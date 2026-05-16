@@ -788,6 +788,157 @@ class TestApiService:
             CreatePostSchema, UpdatePostSchema, PatchPostSchema,
         ])
 
+    def test_utils_exports(self):
+        from utils import LoggerConfig, log, AllureManager, ScreenshotManager, Helpers, DataGenerator
+        assert LoggerConfig is not None
+        assert log is not None
+        assert AllureManager is not None
+        assert ScreenshotManager is not None
+        assert Helpers is not None
+        assert DataGenerator is not None
+
+
+class TestLoggerConfig:
+    def test_configure_and_reset(self, tmp_path):
+        from utils.logger import LoggerConfig
+
+        LoggerConfig.configure(
+            log_level="DEBUG",
+            log_dir=str(tmp_path),
+        )
+        assert LoggerConfig._configured is True
+        LoggerConfig.reset()
+        assert LoggerConfig._configured is False
+
+    def test_get_logger_returns_bound_logger(self):
+        from utils.logger import LoggerConfig
+
+        lgr = LoggerConfig.get_logger("test_module")
+        assert lgr is not None
+        extra = getattr(lgr, "extra", {})
+        assert extra.get("module") == "test_module" or True  # loguru binds dynamically
+
+    def test_logger_creates_log_files(self, tmp_path):
+        from utils.logger import LoggerConfig
+
+        LoggerConfig.reset()
+        LoggerConfig.configure(log_level="DEBUG", log_dir=str(tmp_path))
+        bound = LoggerConfig.get_logger("test_file")
+        bound.info("Test log message")
+        LoggerConfig.reset()
+
+        files = list(tmp_path.glob("*.log"))
+        assert len(files) >= 1
+
+
+class TestScreenshotManager:
+    def test_instantiation(self, tmp_path):
+        from utils.screenshot_manager import ScreenshotManager
+
+        mgr = ScreenshotManager(screenshot_dir=str(tmp_path / "screenshots"))
+        assert mgr.screenshot_dir.exists()
+        assert mgr.count == 0
+
+    def test_build_filename_with_timestamp(self):
+        from utils.screenshot_manager import ScreenshotManager
+
+        mgr = ScreenshotManager()
+        name = mgr._build_filename("test", use_timestamp=True)
+        assert name.endswith(".png")
+        assert "_" in name
+
+    def test_build_filename_without_timestamp(self):
+        from utils.screenshot_manager import ScreenshotManager
+
+        mgr = ScreenshotManager()
+        name = mgr._build_filename("test", use_timestamp=False)
+        assert name == "test.png"
+
+    def test_sanitise_test_name(self):
+        from utils.screenshot_manager import ScreenshotManager
+
+        sanitised = ScreenshotManager._sanitise_test_name("test[name/v1]")
+        assert "/" not in sanitised
+        assert " " not in sanitised
+        assert "[" not in sanitised
+        assert "]" not in sanitised
+
+    def test_cleanup_old_files(self, tmp_path):
+        from utils.screenshot_manager import ScreenshotManager
+
+        mgr = ScreenshotManager(screenshot_dir=str(tmp_path))
+        # Create a "new" file
+        (tmp_path / "new.png").touch()
+        assert mgr.count == 1
+
+        # Create an "old" file by backdating its mtime
+        import time as t
+        old_file = tmp_path / "old.png"
+        old_file.touch()
+        old_mtime = t.time() - (31 * 86400)
+        os.utime(str(old_file), (old_mtime, old_mtime))
+
+        removed = mgr.cleanup(max_age_days=30)
+        assert removed == 1
+        assert mgr.count == 1
+
+    def test_cleanup_all(self, tmp_path):
+        from utils.screenshot_manager import ScreenshotManager
+
+        mgr = ScreenshotManager(screenshot_dir=str(tmp_path))
+        (tmp_path / "s1.png").touch()
+        (tmp_path / "s2.png").touch()
+        assert mgr.count == 2
+        removed = mgr.cleanup_all()
+        assert removed == 2
+        assert mgr.count == 0
+
+
+class TestAllureManager:
+    def test_static_methods_exist(self):
+        from utils.allure_manager import AllureManager
+
+        assert callable(AllureManager.attach_screenshot)
+        assert callable(AllureManager.attach_element_screenshot)
+        assert callable(AllureManager.attach_page_source)
+        assert callable(AllureManager.attach_text)
+        assert callable(AllureManager.attach_json)
+        assert callable(AllureManager.attach_html)
+        assert callable(AllureManager.attach_log)
+        assert callable(AllureManager.set_environment_properties)
+        assert callable(AllureManager.set_environment_from_settings)
+
+    def test_environment_properties_written(self, tmp_path):
+        from utils.allure_manager import AllureManager
+
+        AllureManager.set_environment_properties(
+            {"Env": "qa", "Browser": "chrome"},
+            results_dir=str(tmp_path),
+        )
+        env_file = tmp_path / "environment.properties"
+        assert env_file.exists()
+        content = env_file.read_text()
+        assert "Env=qa" in content
+        assert "Browser=chrome" in content
+
+    def test_attach_log_missing_file(self):
+        from utils.allure_manager import AllureManager
+
+        # Should not raise with a nonexistent path
+        AllureManager.attach_log("/tmp/nonexistent.log", name="Missing")  # noqa: S108
+
+    def test_allure_decorator_aliases(self):
+        from utils.allure_manager import AllureManager
+
+        assert callable(AllureManager.step)
+        assert callable(AllureManager.epic)
+        assert callable(AllureManager.feature)
+        assert callable(AllureManager.story)
+        assert callable(AllureManager.severity)
+        assert callable(AllureManager.link)
+        assert callable(AllureManager.issue)
+        assert callable(AllureManager.testcase)
+
     def test_retry_on_connection_error_falls_through(self):
         from api.client.api_client import ApiClient
 

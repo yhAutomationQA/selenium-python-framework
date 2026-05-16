@@ -1,7 +1,8 @@
-import pytest
-import logging
 import os
+import logging
 from typing import Generator
+
+import pytest
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from config.config_loader import load_settings, resolve_env
@@ -9,6 +10,12 @@ from config.settings import Settings
 from core.driver.browser_options import BrowserOptionsFactory
 from core.driver.driver_factory import DriverFactory
 from core.driver.driver_manager import DriverManager
+from utils.logger import LoggerConfig, log
+from utils.allure_manager import AllureManager
+from utils.screenshot_manager import ScreenshotManager
+
+
+# ── CLI Options ──────────────────────────────────────────────────
 
 
 def pytest_addoption(parser):
@@ -38,6 +45,75 @@ def pytest_addoption(parser):
         default=None,
         help="Run browser in incognito/private mode (overrides .env file)",
     )
+    parser.addoption(
+        "--log-level-cli",
+        action="store",
+        default=None,
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set Loguru log level (overrides .env file)",
+    )
+
+
+# ── Session Hooks ────────────────────────────────────────────────
+
+
+def pytest_sessionstart(session):
+    config_ = session.config
+    env = config_.getoption("--env") or os.getenv("ENV", "qa")
+    settings = load_settings(env)
+
+    cli_log = config_.getoption("--log-level-cli")
+    log_level = cli_log or settings.log_level
+
+    LoggerConfig.configure(
+        log_level=log_level,
+        context={
+            "env": settings.env,
+            "browser": settings.browser,
+        },
+    )
+
+    log.info("=" * 60)
+    log.info("Test session started | env={} | browser={}", settings.env, settings.browser)
+    log.info("=" * 60)
+
+
+def pytest_sessionfinish(session):
+    log.info("=" * 60)
+    log.info("Test session finished")
+    log.info("=" * 60)
+
+    config_ = session.config
+    env = config_.getoption("--env") or os.getenv("ENV", "qa")
+    settings = load_settings(env)
+    AllureManager.set_environment_from_settings(settings)
+
+
+# ── Test Lifecycle Hooks ─────────────────────────────────────────
+
+
+def pytest_runtest_setup(item):
+    log.info("TEST  │ {} │ setup", item.nodeid)
+
+
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    rep = outcome.get_result()
+    setattr(item, f"rep_{rep.when}", rep)
+
+    if rep.when == "call":
+        status = "PASSED" if rep.passed else "FAILED"
+        duration = rep.duration
+        log.info(
+            "TEST  │ {} │ {} ({:.3f}s)",
+            item.nodeid,
+            status,
+            duration,
+        )
+
+
+# ── Settings / Env Fixtures ──────────────────────────────────────
 
 
 @pytest.fixture(scope="session")
@@ -89,13 +165,16 @@ def api_url(settings: Settings) -> str:
     return settings.api_url
 
 
+# ── Driver Fixtures ──────────────────────────────────────────────
+
+
 @pytest.fixture(scope="session")
 def driver_manager() -> Generator[DriverManager, None, None]:
     manager = DriverManager()
     yield manager
     remaining = manager.active_count
     if remaining > 0:
-        logging.warning("Cleaning up %d remaining driver(s) at session end", remaining)
+        log.warning("Cleaning up {} remaining driver(s) at session end", remaining)
         manager.quit_all()
 
 
@@ -123,31 +202,41 @@ def driver(
     driver_instance.maximize_window()
     driver_manager.register(driver_instance)
 
+    log.debug("Driver started | session={}", driver_instance.session_id)
+
     yield driver_instance
 
+    log.debug("Driver quitting | session={}", driver_instance.session_id)
     driver_manager.quit(driver_instance)
 
 
-@pytest.fixture(autouse=True)
-def screenshot_on_failure(request, driver: WebDriver):
+# ── Logging / Reporting Fixtures ─────────────────────────────────
+
+
+@pytest.fixture(scope="session")
+def logger():
+    """Provide the Loguru logger for manual use in tests."""
+    return log
+
+
+@pytest.fixture(scope="session")
+def screenshot_manager() -> ScreenshotManager:
+    return ScreenshotManager()
+
+
+@pytest.fixture(scope="function", autouse=True)
+def attach_on_failure(
+    request,
+    driver: WebDriver,
+    screenshot_manager: ScreenshotManager,
+):
+    """Autouse fixture: captures screenshot + page source on test failure
+    and attaches them to Allure."""
     yield
     if request.node.rep_call.failed if hasattr(request.node, "rep_call") else False:
-        screenshot_dir = "screenshots"
-        os.makedirs(screenshot_dir, exist_ok=True)
-        test_name = request.node.name.replace("/", "_").replace(" ", "_")
-        driver.save_screenshot(f"{screenshot_dir}/{test_name}_failed.png")
+        test_name = request.node.name
+        exc = None
+        if hasattr(request.node, "rep_call") and request.node.rep_call.excinfo is not None:
+            exc = request.node.rep_call.excinfo.value
 
-
-@pytest.hookimpl(tryfirst=True, hookwrapper=True)
-def pytest_runtest_makereport(item, call):
-    outcome = yield
-    rep = outcome.get_result()
-    setattr(item, f"rep_{rep.when}", rep)
-
-
-@pytest.fixture(autouse=True)
-def setup_logging():
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-    )
+        screenshot_manager.capture_on_failure(driver, test_name, exception=exc)
