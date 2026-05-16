@@ -1,0 +1,18 @@
+{
+  "errors": {
+    "login_mismatch": "Username and password do not match any user in this service",
+    "login_locked": "Sorry, this user has been locked out.",
+    "login_username_required": "Username is required",
+    "login_password_required": "Password is required",
+    "checkout_first_name_required": "First Name is required",
+    "checkout_last_name_required": "Last Name is required",
+    "checkout_postal_code_required": "Postal Code is required"
+  },
+  "page_titles": {
+    "inventory": "Products",
+    "cart": "Your Cart",
+    "checkout_step_one": "Checkout: Your Information",
+    "checkout_step_two": "Checkout: Overview",
+    "checkout_complete": "Checkout: Complete!"
+  }
+}

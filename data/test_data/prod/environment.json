@@ -1,0 +1,22 @@
+{
+  "environment": "prod",
+  "login_users": {
+    "standard": { "username": "standard_user", "password": "secret_sauce" }
+  },
+  "checkout_data": {
+    "default": { "first_name": "Prod", "last_name": "User", "postal_code": "54321" }
+  },
+  "api_endpoints": {
+    "base_url": "https://api.saucedemo.com",
+    "products": "/api/v1/products",
+    "orders": "/api/v1/orders",
+    "users": "/api/v1/users"
+  },
+  "features": {
+    "checkout_enabled": true,
+    "sorting_enabled": true,
+    "burger_menu_enabled": true,
+    "rate_limiting": true,
+    "audit_logging": true
+  }
+}

@@ -412,6 +412,179 @@ class TestPageMethodSignatures:
         result = checkout.navigate_to_step_one()
         assert result is checkout
 
+    def test_user_factory_static_methods(self):
+        from data.factories.user_factory import UserFactory
+
+        std = UserFactory.standard_user()
+        assert std["username"] == "standard_user"
+        assert std["password"] == "secret_sauce"
+
+        locked = UserFactory.locked_out_user()
+        assert locked["username"] == "locked_out_user"
+
+        all_users = UserFactory.all_saucedemo_users()
+        assert len(all_users) == 6
+
+        invalid = UserFactory.invalid_credentials()
+        assert invalid["username"] == "invalid_user"
+
+    def test_user_factory_dynamic_methods(self):
+        from data.factories.user_factory import UserFactory
+        factory = UserFactory(seed=42)
+        profile = factory.checkout_profile()
+        assert "first_name" in profile
+        assert "last_name" in profile
+        assert "postal_code" in profile
+
+        user = factory.random_user()
+        assert "username" in user
+        assert "password" in user
+        assert "email" in user
+        assert len(user) >= 8
+
+        profiles = factory.checkout_profile_list(count=5)
+        assert len(profiles) == 5
+
+    def test_product_factory_saucedemo(self):
+        from data.factories.product_factory import ProductFactory
+
+        backpack = ProductFactory.saucedemo_product("Sauce Labs Backpack")
+        assert backpack["name"] == "Sauce Labs Backpack"
+        assert backpack["price"] == 29.99
+        assert "description" in backpack
+
+        all_products = ProductFactory.all_saucedemo_products()
+        assert len(all_products) == 6
+
+        prices = ProductFactory.saucedemo_price_list()
+        assert len(prices) == 6
+        assert all(isinstance(p, float) for p in prices)
+
+    def test_product_factory_dynamic(self):
+        from data.factories.product_factory import ProductFactory
+        factory = ProductFactory(seed=42)
+        product = factory.random_product()
+        assert "name" in product
+        assert "price" in product
+        assert "sku" in product
+        assert product["price"] > 0
+
+        products = factory.random_product_list(count=3)
+        assert len(products) == 3
+
+        prices = factory.price_list(count=4)
+        assert len(prices) == 4
+
+    def test_api_payload_factory(self):
+        from data.factories.api_payload_factory import ApiPayloadFactory
+
+        login = ApiPayloadFactory.login_payload()
+        assert login["username"] == "standard_user"
+
+        factory = ApiPayloadFactory(seed=42)
+        checkout = factory.checkout_payload()
+        assert "first_name" in checkout
+        assert "zip_code" in checkout
+
+        order = factory.order_payload()
+        assert "items" in order
+        assert len(order["items"]) == 2
+
+        create = factory.create_user_payload()
+        assert "username" in create
+        assert "email" in create
+
+    def test_factories_init_exports(self):
+        from data.factories import BaseFactory, UserFactory, ProductFactory, ApiPayloadFactory
+        assert BaseFactory is not None
+        assert UserFactory is not None
+        assert ProductFactory is not None
+        assert ApiPayloadFactory is not None
+
+    def test_factory_clone_and_serialize(self, tmp_path):
+        from data.factories.user_factory import UserFactory
+        factory = UserFactory(seed=42)
+        cloned = factory.clone(seed=99)
+        assert cloned._seed == 99
+        assert cloned is not factory
+
+        path = factory.to_json_file(tmp_path / "user.json")
+        assert path.exists()
+        assert path.read_text(encoding="utf-8").startswith("{")
+
+        bulk = factory.to_json_file_bulk(tmp_path / "users.json", count=2)
+        assert bulk.exists()
+
+    def test_json_data_loader(self):
+        from data.json import JsonDataLoader
+
+        JsonDataLoader.clear_cache()
+        users = JsonDataLoader.saucedemo_users()
+        assert "users" in users
+        assert "standard_user" in users["users"]
+
+        products = JsonDataLoader.saucedemo_products()
+        assert "products" in products
+        assert len(products["products"]) == 6
+
+        profiles = JsonDataLoader.checkout_profiles()
+        assert "profiles" in profiles
+
+        errors = JsonDataLoader.error_messages()
+        assert "errors" in errors
+
+        payloads = JsonDataLoader.api_payloads()
+        assert "payloads" in payloads
+
+    def test_json_data_loader_queries(self):
+        from data.json import JsonDataLoader
+
+        JsonDataLoader.clear_cache()
+        user = JsonDataLoader.get_user("standard_user")
+        assert user["username"] == "standard_user"
+
+        product = JsonDataLoader.get_product("Sauce Labs Backpack")
+        assert product["price"] == 29.99
+
+        error = JsonDataLoader.get_error("login_mismatch")
+        assert "Username and password" in error
+
+        payload = JsonDataLoader.get_api_payload("login")
+        assert payload["username"] == "standard_user"
+
+        names = JsonDataLoader.product_names()
+        assert len(names) == 6
+
+    def test_test_data_loader_env_specific(self):
+        from data.test_data import TestDataLoader
+
+        TestDataLoader.clear_cache()
+        qa_users = TestDataLoader.login_users("qa")
+        assert qa_users["standard"]["username"] == "standard_user"
+
+        qa_features = TestDataLoader.features("qa")
+        assert qa_features["checkout_enabled"] is True
+
+        endpoints = TestDataLoader.api_endpoints("qa")
+        assert "base_url" in endpoints
+
+        dev = TestDataLoader.get("environment", env="dev")
+        assert dev == "dev"
+
+        staging = TestDataLoader.get("environment", env="staging")
+        assert staging == "staging"
+
+        prod = TestDataLoader.get("environment", env="prod")
+        assert prod == "prod"
+
+    def test_data_init_exports(self):
+        from data import BaseFactory, UserFactory, ProductFactory, ApiPayloadFactory
+        from data import JsonDataLoader, TestDataLoader
+        assert all(x is not None for x in [
+            BaseFactory, UserFactory, ProductFactory, ApiPayloadFactory,
+            JsonDataLoader, TestDataLoader,
+        ])
+
     def test_page_methods_return_self_for_chaining(self, mock_driver):
         from pages.login.login_page import LoginPage
         from pages.inventory.inventory_page import InventoryPage

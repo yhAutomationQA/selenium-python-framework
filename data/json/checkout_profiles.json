@@ -1,0 +1,30 @@
+{
+  "profiles": {
+    "default": {
+      "first_name": "Test",
+      "last_name": "User",
+      "postal_code": "12345"
+    },
+    "minimal": {
+      "first_name": "A",
+      "last_name": "B",
+      "postal_code": "0"
+    },
+    "canadian": {
+      "first_name": "Pierre",
+      "last_name": "Trudeau",
+      "postal_code": "K1A 0A6"
+    },
+    "uk": {
+      "first_name": "James",
+      "last_name": "Smith",
+      "postal_code": "EC1A 1BB"
+    },
+    "international": {
+      "first_name": "Wei",
+      "last_name": "Zhang",
+      "postal_code": "100000"
+    }
+  },
+  "profile_keys": ["default", "minimal", "canadian", "uk", "international"]
+}

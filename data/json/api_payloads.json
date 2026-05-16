@@ -1,0 +1,52 @@
+{
+  "payloads": {
+    "login": {
+      "username": "standard_user",
+      "password": "secret_sauce"
+    },
+    "login_invalid": {
+      "username": "",
+      "password": ""
+    },
+    "checkout": {
+      "first_name": "Test",
+      "last_name": "User",
+      "zip_code": "12345"
+    },
+    "checkout_missing_fields": {
+      "first_name": "",
+      "last_name": "",
+      "zip_code": ""
+    },
+    "order_single_item": {
+      "items": [
+        {
+          "product_id": "sauce-labs-backpack",
+          "quantity": 1,
+          "price": 29.99
+        }
+      ],
+      "payment_method": "credit_card"
+    },
+    "order_multiple_items": {
+      "items": [
+        {"product_id": "sauce-labs-backpack", "quantity": 1, "price": 29.99},
+        {"product_id": "sauce-labs-bike-light", "quantity": 2, "price": 9.99}
+      ],
+      "payment_method": "credit_card"
+    },
+    "create_user": {
+      "username": "new_user",
+      "email": "new_user@example.com",
+      "password": "Temp@1234",
+      "role": "customer"
+    },
+    "update_user": {
+      "email": "updated@example.com",
+      "phone": "+1-555-0100"
+    },
+    "token_refresh": {
+      "refresh_token": "placeholder_refresh_token"
+    }
+  }
+}
