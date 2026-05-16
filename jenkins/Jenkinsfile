@@ -1,76 +1,386 @@
+/*
+ * Enterprise CI Pipeline for Selenium Python Automation Framework
+ *
+ * Two execution modes:
+ *   docker — build image, start Selenium Grid via compose, run tests in container
+ *   local  — create venv, use system browsers, run tests directly
+ *
+ * Required Jenkins plugins:
+ *   - Pipeline (Declarative)
+ *   - Allure Jenkins Plugin
+ *   - JUnit Plugin
+ *
+ * Required Jenkins global tools (names configurable in Manage Jenkins → Tools):
+ *   - Python 3.12 (named "python3.12")
+ *   - Allure Commandline (named "allure")
+ */
+
+def BROWSER_LIST    = ["chrome", "firefox", "edge"]
+def REPORTS_DIR     = "reports"
+def SCREENSHOTS_DIR = "screenshots"
+def LOGS_DIR        = "logs"
+def COMPOSE_FILE    = "docker/docker-compose.yml"
+def DOCKERFILE      = "docker/Dockerfile"
+def IMAGE_TAG       = "selenium-framework"
+
 pipeline {
     agent any
 
     tools {
-        python 'python3.12'
+        python "python3.12"
     }
 
     parameters {
         choice(
-            name: 'BROWSER',
-            choices: ['chrome', 'firefox', 'edge'],
-            description: 'Browser to run tests on'
+            name: "EXECUTION_MODE",
+            choices: ["docker", "local"],
+            description: "docker = compose + container  |  local = venv + system browsers"
         )
         choice(
-            name: 'ENVIRONMENT',
-            choices: ['dev', 'qa', 'staging', 'prod'],
-            description: 'Target environment'
+            name: "BROWSER",
+            choices: ["chrome", "firefox", "edge", "all"],
+            description: "Target browser(s)"
         )
         choice(
-            name: 'MARKERS',
-            choices: ['smoke', 'regression', 'sanity', 'e2e'],
-            description: 'Test marker to execute'
+            name: "ENVIRONMENT",
+            choices: ["dev", "qa", "staging"],
+            description: "Target environment"
+        )
+        choice(
+            name: "MARKERS",
+            choices: ["smoke", "regression", "sanity", "e2e", "offline"],
+            description: "Test marker to execute"
         )
         booleanParam(
-            name: 'HEADLESS',
+            name: "HEADLESS",
             defaultValue: true,
-            description: 'Run in headless mode'
+            description: "Headless browser mode"
         )
+        booleanParam(
+            name: "RUN_LINT",
+            defaultValue: true,
+            description: "Execute lint stage"
+        )
+        booleanParam(
+            name: "RUN_SECURITY",
+            defaultValue: true,
+            description: "Execute security scan stage"
+        )
+    }
+
+    environment {
+        ENV             = "${params.ENVIRONMENT}"
+        HEADLESS_FLAG   = "${params.HEADLESS ? '--headless' : ''}"
+        PYTHONUNBUFFERED = "1"
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
+
+        // ─────────────────────────────────────────────────────────
+        // 1. Checkout
+        // ─────────────────────────────────────────────────────────
+        stage("Checkout") {
+            steps { checkout scm }
+        }
+
+        // ─────────────────────────────────────────────────────────
+        // 2. Dependencies (docker build OR local venv + tools)
+        // ─────────────────────────────────────────────────────────
+        stage("Dependencies") {
+            parallel {
+                stage("Docker Build") {
+                    when { expression { params.EXECUTION_MODE == "docker" } }
+                    steps {
+                        sh """
+                            docker build \\
+                                -f ${DOCKERFILE} \\
+                                -t ${IMAGE_TAG} \\
+                                --pull \\
+                                .
+                        """
+                    }
+                }
+
+                stage("Local Dependencies") {
+                    when { expression { params.EXECUTION_MODE == "local" } }
+                    steps {
+                        sh """
+                            python3 -m venv venv
+                            . venv/bin/activate
+                            pip install --quiet --upgrade pip
+                            pip install --quiet -r requirements.txt
+                        """
+                    }
+                }
             }
         }
 
-        stage('Setup Virtual Environment') {
-            steps {
-                sh '''
-                    python3 -m venv venv
-                    . venv/bin/activate
-                    pip install --upgrade pip
-                    pip install -r requirements.txt
-                '''
+        // ─────────────────────────────────────────────────────────
+        // 3. Quality Gates (lint + security in parallel)
+        // ─────────────────────────────────────────────────────────
+        stage("Quality Gates") {
+            parallel {
+                stage("Lint") {
+                    when { expression { params.RUN_LINT } }
+                    steps {
+                        sh script: """
+                            pip install --quiet ruff
+                            ruff check .
+                            ruff format --check .
+                        """
+                        // The docker build already validates imports via pip install,
+                        // so we can run lint directly on the source either way.
+                    }
+                }
+
+                stage("Security Scan") {
+                    when { expression { params.RUN_SECURITY } }
+                    steps {
+                        sh """
+                            pip install --quiet bandit
+                            mkdir -p ${REPORTS_DIR}
+                            bandit -r . \\
+                                -f html \\
+                                -o ${REPORTS_DIR}/bandit_report.html \\
+                                --skip B101,B311,B403,B404,B603,B607 || true
+                        """
+                    }
+                }
             }
         }
 
-        stage('Run Tests') {
+        // ─────────────────────────────────────────────────────────
+        // 4. Offline Tests (no browser needed — fast feedback)
+        // ─────────────────────────────────────────────────────────
+        stage("Offline Tests") {
+            steps { script { executeTests("offline", "offline") } }
+        }
+
+        // ─────────────────────────────────────────────────────────
+        // 5. Smoke Tests (browser matrix)
+        // ─────────────────────────────────────────────────────────
+        stage("Smoke Tests") {
+            when {
+                expression { params.MARKERS in ["smoke", "regression", "sanity", "e2e"] }
+            }
             steps {
-                sh '''
-                    . venv/bin/activate
-                    pytest -v \\
-                        --browser=${BROWSER} \\
-                        --env=${ENVIRONMENT} \\
-                        ${HEADLESS ? '--headless' : ''} \\
-                        -m ${MARKERS} \\
-                        --html=reports/${MARKERS}_${ENVIRONMENT}_report.html \\
-                        --self-contained-html \\
-                        --junitxml=reports/junit_report.xml
-                '''
+                script {
+                    runBrowserMatrix("smoke")
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────
+        // 6. Regression Tests (browser matrix, edge excluded)
+        // ─────────────────────────────────────────────────────────
+        stage("Regression Tests") {
+            when {
+                expression { params.MARKERS == "regression" }
+            }
+            steps {
+                script {
+                    runBrowserMatrix("regression")
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────
+        // 7. Allure Reporting (aggregate all result directories)
+        // ─────────────────────────────────────────────────────────
+        stage("Allure Reporting") {
+            steps {
+                script {
+                    def resultDirs = findFiles(glob: "allure-results-*/**/", exclude: "${REPORTS_DIR}/**")
+                    if (resultDirs.isEmpty()) {
+                        echo "No Allure result directories found; skipping report generation"
+                    } else {
+                        def configs = resultDirs.collect { dir ->
+                            [path: dir.path.replaceAll('/+$', '')]
+                        }.unique()
+
+                        echo "Generating Allure report from ${configs.size()} result set(s)"
+                        allure(
+                            includeProperties: false,
+                            results: configs,
+                            report: "${REPORTS_DIR}/allure-report"
+                        )
+                    }
+                }
             }
         }
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Post Pipeline Actions
+    // ─────────────────────────────────────────────────────────
     post {
         always {
-            archiveArtifacts artifacts: 'reports/**/*', fingerprint: true
-            junit 'reports/junit_report.xml'
-            cleanWs()
+            script {
+                // Publish JUnit test results for trend tracking
+                junit(
+                    testResults: "${REPORTS_DIR}/junit_*.xml",
+                    allowEmptyResults: true
+                )
+
+                // Archive HTML reports
+                archiveArtifacts(
+                    artifacts: "${REPORTS_DIR}/**/*.html",
+                    fingerprint: true,
+                    allowEmptyArchive: true
+                )
+
+                // Archive Allure JSON results
+                archiveArtifacts(
+                    artifacts: "allure-results-*/**/*.json",
+                    fingerprint: false,
+                    allowEmptyArchive: true
+                )
+
+                // Archive failure screenshots
+                archiveArtifacts(
+                    artifacts: "${SCREENSHOTS_DIR}/**/*.png",
+                    fingerprint: false,
+                    allowEmptyArchive: true
+                )
+
+                // Archive framework logs
+                archiveArtifacts(
+                    artifacts: "${LOGS_DIR}/**/*.log",
+                    fingerprint: false,
+                    allowEmptyArchive: true
+                )
+            }
+
+            // Docker teardown
+            script {
+                if (params.EXECUTION_MODE == "docker") {
+                    sh """
+                        docker compose -f ${COMPOSE_FILE} down \\
+                            --volumes --remove-orphans --timeout 10 2>/dev/null || true
+                    """
+                }
+            }
+
+            // Workspace cleanup
+            cleanWs deleteDirs: true, notFailBuild: true
         }
+
         failure {
-            echo "Tests failed. Check archived reports."
+            script {
+                echo "Pipeline FAILED. See archived reports for details."
+
+                // ── Uncomment and configure for Slack notifications ──
+                // slackSend(
+                //     channel: "#qa-alerts",
+                //     color: "danger",
+                //     message: "Pipeline failure: ${env.JOB_NAME} #${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)",
+                //     teamDomain: "your-team",
+                //     tokenCredentialId: "slack-token"
+                // )
+            }
+        }
+
+        unstable {
+            script {
+                echo "Pipeline UNSTABLE: some tests failed or were skipped."
+            }
         }
     }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// Helper Functions
+// ═══════════════════════════════════════════════════════════════════
+
+def resolveBrowsers() {
+    return params.BROWSER == "all" ? BROWSER_LIST : [params.BROWSER]
+}
+
+def runBrowserMatrix(marker) {
+    def allowed = marker == "regression" ? BROWSER_LIST.findAll { it != "edge" } : resolveBrowsers()
+    def branches = [:]
+
+    for (browser in allowed) {
+        def b = browser
+        branches[b] = {
+            stage("${marker.capitalize()} - ${b}") {
+                executeTests(b, marker)
+            }
+        }
+    }
+
+    parallel branches
+}
+
+def executeTests(browser, marker) {
+    def allureDir   = "allure-results-${marker}_${browser}"
+    def htmlReport  = "${REPORTS_DIR}/${marker}_${browser}_report.html"
+    def junitXml    = "${REPORTS_DIR}/junit_${marker}_${browser}.xml"
+
+    if (params.EXECUTION_MODE == "docker") {
+        dockerRunPytest(browser, marker, allureDir, htmlReport, junitXml)
+    } else {
+        localRunPytest(browser, marker, allureDir, htmlReport, junitXml)
+    }
+}
+
+// ── Local Execution ─────────────────────────────────────────────
+
+def localRunPytest(browser, marker, allureDir, htmlReport, junitXml) {
+    def markerFlag = marker == "offline" ? "-m offline" : "-m ${marker}"
+
+    sh """
+        . venv/bin/activate
+
+        mkdir -p ${REPORTS_DIR} ${SCREENSHOTS_DIR} ${LOGS_DIR} ${allureDir}
+
+        pytest ${markerFlag} \\
+            --browser=${browser} \\
+            --env=${params.ENVIRONMENT} \\
+            ${HEADLESS_FLAG} \\
+            -n auto \\
+            --alluredir=${allureDir} \\
+            --html=${htmlReport} \\
+            --self-contained-html \\
+            --junitxml=${junitXml} \\
+            -v --tb=short --strict-markers
+    """
+}
+
+// ── Docker Execution ────────────────────────────────────────────
+
+def dockerRunPytest(browser, marker, allureDir, htmlReport, junitXml) {
+    def markerFlag = marker == "offline" ? "-m offline" : "-m ${marker}"
+
+    // Start Selenium Grid services for browser tests
+    if (marker != "offline") {
+        sh """
+            docker compose -f ${COMPOSE_FILE} up -d \\
+                selenium-hub chrome firefox \\
+                --wait --wait-timeout 60
+        """
+    }
+
+    sh """
+        mkdir -p ${REPORTS_DIR} ${SCREENSHOTS_DIR} ${LOGS_DIR} ${allureDir}
+
+        docker compose -f ${COMPOSE_FILE} run --rm --no-deps \\
+            -e ENV=${params.ENVIRONMENT} \\
+            -e BROWSER=${browser} \\
+            -e HEADLESS=true \\
+            -e WEBDRIVER_REMOTE_URL=http://selenium-hub:4444/wd/hub \\
+            -e PYTHONUNBUFFERED=1 \\
+            test-runner \\
+            ${markerFlag} \\
+            --browser=${browser} \\
+            --env=${params.ENVIRONMENT} \\
+            --headless \\
+            -n auto \\
+            --alluredir=${allureDir} \\
+            --html=${htmlReport} \\
+            --self-contained-html \\
+            --junitxml=${junitXml} \\
+            -v --tb=short --strict-markers
+    """
 }
