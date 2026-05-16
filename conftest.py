@@ -11,9 +11,6 @@ if TYPE_CHECKING:
     from core.driver.driver_manager import DriverManager
     from utils.screenshot_manager import ScreenshotManager
 
-from config.config_loader import load_settings, resolve_env
-from config.settings import Settings
-from utils.logger import LoggerConfig, log
 
 # ── CLI Options ──────────────────────────────────────────────────
 
@@ -57,45 +54,65 @@ def pytest_addoption(parser):
 # ── Session Hooks ────────────────────────────────────────────────
 
 
-def pytest_sessionstart(session):
-    config_ = session.config
-    env = config_.getoption("--env") or os.getenv("ENV", "qa")
-    settings = load_settings(env)
+def _try_load_settings(env: str | None = None):
+    """Load settings with graceful fallback if dependencies are missing."""
+    try:
+        from config.config_loader import load_settings, resolve_env
 
-    cli_log = config_.getoption("--log-level-cli")
+        return load_settings(resolve_env(env))
+    except ImportError:
+        return None
+
+
+def pytest_sessionstart(session):
+    settings = _try_load_settings(session.config.getoption("--env"))
+    if settings is None:
+        return
+
+    cli_log = session.config.getoption("--log-level-cli")
     log_level = cli_log or settings.log_level
 
-    LoggerConfig.configure(
-        log_level=log_level,
-        context={
-            "env": settings.env,
-            "browser": settings.browser,
-        },
-    )
+    try:
+        from utils.logger import LoggerConfig, log
 
-    log.info("=" * 60)
-    log.info("Test session started | env={} | browser={}", settings.env, settings.browser)
-    log.info("=" * 60)
+        LoggerConfig.configure(
+            log_level=log_level,
+            context={
+                "env": settings.env,
+                "browser": settings.browser,
+            },
+        )
+
+        log.info("=" * 60)
+        log.info("Test session started | env={} | browser={}", settings.env, settings.browser)
+        log.info("=" * 60)
+    except ImportError:
+        pass
 
 
 def pytest_sessionfinish(session):
+    try:
+        from utils.logger import log
+    except ImportError:
+        return
+
     log.info("=" * 60)
     log.info("Test session finished")
     log.info("=" * 60)
 
-    config_ = session.config
-    env = config_.getoption("--env") or os.getenv("ENV", "qa")
-    settings = load_settings(env)
-    from utils.allure_manager import AllureManager
+    settings = _try_load_settings(session.config.getoption("--env"))
+    if settings is None:
+        return
 
-    AllureManager.set_environment_from_settings(settings)
+    try:
+        from utils.allure_manager import AllureManager
+
+        AllureManager.set_environment_from_settings(settings)
+    except ImportError:
+        pass
 
 
 # ── Test Lifecycle Hooks ─────────────────────────────────────────
-
-
-def pytest_runtest_setup(item):
-    log.info("TEST  │ {} │ setup", item.nodeid)
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
@@ -105,65 +122,66 @@ def pytest_runtest_makereport(item, call):
     setattr(item, f"rep_{rep.when}", rep)
 
     if rep.when == "call":
-        status = "PASSED" if rep.passed else "FAILED"
-        duration = rep.duration
-        log.info(
-            "TEST  │ {} │ {} ({:.3f}s)",
-            item.nodeid,
-            status,
-            duration,
-        )
+        try:
+            from utils.logger import log
+
+            status = "PASSED" if rep.passed else "FAILED"
+            log.info("TEST  │ {} │ {} ({:.3f}s)", item.nodeid, status, rep.duration)
+        except ImportError:
+            pass
 
 
 # ── Settings / Env Fixtures ──────────────────────────────────────
 
 
 @pytest.fixture(scope="session")
-def settings(request) -> Settings:
+def settings(request):
+    from config.config_loader import load_settings, resolve_env
+
     env = resolve_env(request.config.getoption("--env"))
-    settings = load_settings(env)
+    loaded = load_settings(env)
 
     cli_browser = request.config.getoption("--browser")
     cli_headless = request.config.getoption("--headless")
     cli_incognito = request.config.getoption("--incognito")
 
     if cli_browser is not None:
-        settings.browser = cli_browser
+        loaded.browser = cli_browser
     if cli_headless is not None:
-        settings.headless = cli_headless
+        loaded.headless = cli_headless
     if cli_incognito is not None:
-        settings.incognito = cli_incognito
+        loaded.incognito = cli_incognito
 
-    return settings
+    return loaded
 
 
 @pytest.fixture(scope="session")
-def env(settings: Settings) -> str:
+def env(settings) -> str:
     return settings.env
 
 
 @pytest.fixture(scope="session")
-def browser_name(settings: Settings) -> str:
+def browser_name(settings) -> str:
     return settings.browser
 
 
 @pytest.fixture(scope="session")
-def headless(settings: Settings) -> bool:
+def headless(settings) -> bool:
     return settings.headless
 
 
 @pytest.fixture(scope="session")
-def incognito(settings: Settings) -> bool:
+def incognito(settings) -> bool:
     return settings.incognito
 
 
 @pytest.fixture(scope="session")
-def base_url(settings: Settings) -> str:
+def base_url(settings) -> str:
     return settings.base_url
 
 
 @pytest.fixture(scope="session")
-def api_url(settings: Settings) -> str:
+def api_url(settings) -> str:
     return settings.api_url
 
 
@@ -178,14 +196,19 @@ def driver_manager() -> Generator["DriverManager", None, None]:
     yield manager
     remaining = manager.active_count
     if remaining > 0:
-        log.warning("Cleaning up {} remaining driver(s) at session end", remaining)
+        try:
+            from utils.logger import log
+
+            log.warning("Cleaning up {} remaining driver(s) at session end", remaining)
+        except ImportError:
+            pass
         manager.quit_all()
 
 
 @pytest.fixture(scope="function")
 def driver(
     request,
-    settings: Settings,
+    settings,
     browser_name: str,
     headless: bool,
     incognito: bool,
@@ -193,6 +216,7 @@ def driver(
 ) -> Generator["WebDriver", None, None]:
     from core.driver.browser_options import BrowserOptionsFactory
     from core.driver.driver_factory import DriverFactory
+    from utils.logger import log
 
     options = BrowserOptionsFactory.create_options(
         browser=browser_name,
@@ -225,7 +249,12 @@ def driver(
 @pytest.fixture(scope="session")
 def logger():
     """Provide the Loguru logger for manual use in tests."""
-    return log
+    try:
+        from utils.logger import log
+
+        return log
+    except ImportError:
+        return None
 
 
 @pytest.fixture(scope="session")
@@ -236,12 +265,8 @@ def screenshot_manager() -> "ScreenshotManager":
 
 
 @pytest.fixture(scope="function", autouse=True)
-def attach_on_failure(
-    request,
-    screenshot_manager: "ScreenshotManager",
-):
-    """Autouse fixture: captures screenshot + page source on test failure
-    and attaches them to Allure. Skips if no driver exists (e.g. offline tests)."""
+def attach_on_failure(request, screenshot_manager: "ScreenshotManager"):
+    """Autouse fixture: captures screenshot + page source on test failure."""
     yield
     if request.node.rep_call.failed if hasattr(request.node, "rep_call") else False:
         test_name = request.node.name
