@@ -22,7 +22,6 @@ class BaseTest:
         return self.driver.current_url
 
     def capture_screenshot(self, name: str) -> str:
-        import os
         from pathlib import Path
         screenshot_dir = Path("screenshots")
         screenshot_dir.mkdir(exist_ok=True)

@@ -1,14 +1,14 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from data.factories.base_factory import BaseFactory
 from flows.flow_utils import (
+    ALL_ITEMS,
     BACKPACK,
     BIKE_LIGHT,
     BOLT_TSHIRT,
     FLEECE_JACKET,
     ONESIE,
     RED_TSHIRT,
-    ALL_ITEMS,
 )
 
 
@@ -24,32 +24,50 @@ class ProductFactory(BaseFactory):
     _SAUCEDEMO_CATALOG: Dict[str, Dict[str, Any]] = {
         BACKPACK: {
             "name": BACKPACK,
-            "description": "carry.allTheThings() with the sleek, streamlined Sly Pack that melds uncompromising style with unequalled laptop and tablet protection.",
+            "description": (
+                "carry.allTheThings() with the sleek, streamlined Sly Pack that melds"
+                " uncompromising style with unequalled laptop and tablet protection."
+            ),
             "price": 29.99,
         },
         BIKE_LIGHT: {
             "name": BIKE_LIGHT,
-            "description": "A red light isn't the desired state in testing but it sure helps when riding your bike at night. Water-resistant with 3 lighting modes.",
+            "description": (
+                "A red light isn't the desired state in testing but it sure helps"
+                " when riding your bike at night. Water-resistant with 3 lighting modes."
+            ),
             "price": 9.99,
         },
         BOLT_TSHIRT: {
             "name": BOLT_TSHIRT,
-            "description": "Get your testing superhero on with the Sauce Labs bolt T-shirt. From American Apparel, 100% ringspun combed cotton, heather gray with red bolt.",
+            "description": (
+                "Get your testing superhero on with the Sauce Labs bolt T-shirt."
+                " From American Apparel, 100% ringspun combed cotton, heather gray with red bolt."
+            ),
             "price": 15.99,
         },
         FLEECE_JACKET: {
             "name": FLEECE_JACKET,
-            "description": "It's not every day that you come across a midweight quarter-zip fleece jacket capable of handling everything from a relaxing day outdoors to a busy day at the office.",
+            "description": (
+                "It's not every day that you come across a midweight quarter-zip fleece jacket"
+                " capable of handling everything from a relaxing day outdoors to a busy day at the office."
+            ),
             "price": 49.99,
         },
         ONESIE: {
             "name": ONESIE,
-            "description": "Rib snap infant onesie for the junior automation engineer in development. Reinforced 3-snap bottom closure, two-needle hemmed sleeved and bottom won't unravel.",
+            "description": (
+                "Rib snap infant onesie for the junior automation engineer in development."
+                " Reinforced 3-snap bottom closure, two-needle hemmed sleeved and bottom won't unravel."
+            ),
             "price": 7.99,
         },
         RED_TSHIRT: {
             "name": RED_TSHIRT,
-            "description": "This classic Sauce Labs t-shirt is perfect to wear when cozying up to your keyboard to automate a few tests. Super-soft and comfy ringspun combed cotton.",
+            "description": (
+                "This classic Sauce Labs t-shirt is perfect to wear when cozying up to your"
+                " keyboard to automate a few tests. Super-soft and comfy ringspun combed cotton."
+            ),
             "price": 15.99,
         },
     }

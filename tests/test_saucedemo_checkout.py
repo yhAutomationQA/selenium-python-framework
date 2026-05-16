@@ -1,19 +1,16 @@
 import pytest
 
+from flows.cart_flow import CartFlow
+from flows.checkout_flow import CheckoutFlow
 from flows.flow_utils import (
     BACKPACK,
-    DEFAULT_FIRST_NAME,
-    DEFAULT_LAST_NAME,
-    DEFAULT_POSTAL_CODE,
-    CHECKOUT_STEP_ONE_TITLE,
-    CHECKOUT_STEP_TWO_TITLE,
     CHECKOUT_ERROR_FIRST_NAME,
     CHECKOUT_ERROR_LAST_NAME,
     CHECKOUT_ERROR_POSTAL_CODE,
+    CHECKOUT_STEP_ONE_TITLE,
+    CHECKOUT_STEP_TWO_TITLE,
 )
 from flows.login_flow import LoginFlow
-from flows.cart_flow import CartFlow
-from flows.checkout_flow import CheckoutFlow
 
 pytestmark = [pytest.mark.ui, pytest.mark.regression]
 

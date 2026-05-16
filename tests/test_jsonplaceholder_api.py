@@ -8,12 +8,10 @@ import pytest
 
 from api.client.api_client import ApiClient
 from api.models.post_model import PostModel
-from api.models.user_model import UserModel
-from api.models.todo_model import TodoModel
-from api.services.jsonplaceholder_service import JSONPlaceholderService
 from api.schemas.post_schema import CreatePostSchema, PatchPostSchema, UpdatePostSchema
 from api.schemas.todo_schema import CreateTodoSchema
 from api.schemas.user_schema import CreateUserSchema
+from api.services.jsonplaceholder_service import JSONPlaceholderService
 
 pytestmark = [pytest.mark.api, pytest.mark.integration]
 
@@ -190,8 +188,8 @@ class TestApiClient:
         assert api_client.base_url == "https://example.com"
 
     def test_raise_for_status_ok(self):
-        from requests import Response
         import requests as req
+        from requests import Response
         response: Response = req.get(f"{JSONPLACEHOLDER_URL}/posts/1")
         # Should not raise
         ApiClient.raise_for_status(response)

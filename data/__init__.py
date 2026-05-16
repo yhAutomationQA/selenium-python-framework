@@ -1,4 +1,4 @@
-from .factories import BaseFactory, UserFactory, ProductFactory, ApiPayloadFactory
+from .factories import ApiPayloadFactory, BaseFactory, ProductFactory, UserFactory
 from .json import JsonDataLoader
 from .test_data import TestDataLoader
 

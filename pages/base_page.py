@@ -1,15 +1,14 @@
 import logging
 import os
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
-from selenium.common.exceptions import WebDriverException
 
-from core.wrappers.element_actions import ElementActions, ElementActionsError
-from core.wrappers.waits import ElementWaits
+from config.constants import Directory, SelectBy
+from core.wrappers.element_actions import ElementActions
 from core.wrappers.javascript_actions import JavaScriptActions
-from config.constants import SelectBy, Directory
+from core.wrappers.waits import ElementWaits
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +87,10 @@ class BasePage:
         self._actions.click(locator, timeout)
         return self
 
-    def fill(self, locator: Tuple[str, str], text: str, clear_first: bool = True, timeout: Optional[int] = None) -> "BasePage":
+    def fill(
+        self, locator: Tuple[str, str], text: str, clear_first: bool = True,
+        timeout: Optional[int] = None,
+    ) -> "BasePage":
         self._actions.type(locator, text, clear_first=clear_first, timeout=timeout)
         return self
 
@@ -166,11 +168,17 @@ class BasePage:
         self._js.set_value(locator, value, timeout)
         return self
 
-    def js_scroll_to(self, locator: Tuple[str, str], block: str = "center", timeout: Optional[int] = None) -> "BasePage":
+    def js_scroll_to(
+        self, locator: Tuple[str, str], block: str = "center",
+        timeout: Optional[int] = None,
+    ) -> "BasePage":
         self._js.scroll_into_view(locator, block=block, timeout=timeout)
         return self
 
-    def js_highlight(self, locator: Tuple[str, str], duration: float = 0.3, timeout: Optional[int] = None) -> "BasePage":
+    def js_highlight(
+        self, locator: Tuple[str, str], duration: float = 0.3,
+        timeout: Optional[int] = None,
+    ) -> "BasePage":
         self._js.highlight(locator, duration=duration, timeout=timeout)
         return self
 

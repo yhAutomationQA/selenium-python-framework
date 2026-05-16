@@ -1,15 +1,15 @@
 from .client import ApiClient
-from .services import BaseService, JSONPlaceholderService
-from .models import PostModel, UserModel, AddressModel, CompanyModel, GeoModel, TodoModel
+from .models import AddressModel, CompanyModel, GeoModel, PostModel, TodoModel, UserModel
 from .schemas import (
     CreatePostSchema,
-    UpdatePostSchema,
-    PatchPostSchema,
-    CreateUserSchema,
-    UpdateUserSchema,
     CreateTodoSchema,
+    CreateUserSchema,
+    PatchPostSchema,
+    UpdatePostSchema,
     UpdateTodoSchema,
+    UpdateUserSchema,
 )
+from .services import BaseService, JSONPlaceholderService
 
 __all__ = [
     "ApiClient",

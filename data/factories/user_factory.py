@@ -2,13 +2,13 @@ from typing import Any, Dict, List, Optional
 
 from data.factories.base_factory import BaseFactory
 from flows.flow_utils import (
-    STANDARD_USER,
-    LOCKED_OUT_USER,
-    PROBLEM_USER,
-    PERFORMANCE_GLITCH_USER,
     ERROR_USER,
-    VISUAL_USER,
+    LOCKED_OUT_USER,
+    PERFORMANCE_GLITCH_USER,
+    PROBLEM_USER,
+    STANDARD_USER,
     VALID_PASSWORD,
+    VISUAL_USER,
 )
 
 

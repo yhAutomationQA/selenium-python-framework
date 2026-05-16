@@ -1,4 +1,3 @@
-from typing import Optional
 
 from selenium.webdriver.remote.webdriver import WebDriver
 

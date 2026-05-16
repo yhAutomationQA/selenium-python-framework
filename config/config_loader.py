@@ -1,9 +1,9 @@
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 from config.settings import Settings
-
 
 _CONFIG_CACHE: dict[str, Settings] = {}
 

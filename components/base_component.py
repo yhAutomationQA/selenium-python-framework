@@ -1,14 +1,14 @@
 import logging
 import os
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 
+from config.constants import Directory, SelectBy
 from core.wrappers.element_actions import ElementActions
-from core.wrappers.waits import ElementWaits
 from core.wrappers.javascript_actions import JavaScriptActions
-from config.constants import SelectBy, Directory
+from core.wrappers.waits import ElementWaits
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,10 @@ class BaseComponent:
         self._actions.click(locator, timeout)
         return self
 
-    def fill(self, locator: Tuple[str, str], text: str, clear_first: bool = True, timeout: Optional[int] = None) -> "BaseComponent":
+    def fill(
+        self, locator: Tuple[str, str], text: str, clear_first: bool = True,
+        timeout: Optional[int] = None,
+    ) -> "BaseComponent":
         self._actions.type(locator, text, clear_first=clear_first, timeout=timeout)
         return self
 
@@ -69,7 +72,10 @@ class BaseComponent:
         self._actions.hover(locator, timeout)
         return self
 
-    def scroll_to(self, locator: Tuple[str, str], block: str = "center", timeout: Optional[int] = None) -> "BaseComponent":
+    def scroll_to(
+        self, locator: Tuple[str, str], block: str = "center",
+        timeout: Optional[int] = None,
+    ) -> "BaseComponent":
         self._actions.scroll_to(locator, block=block, timeout=timeout)
         return self
 
@@ -94,15 +100,24 @@ class BaseComponent:
     def find_elements(self, locator: Tuple[str, str], timeout: Optional[int] = None) -> List[WebElement]:
         return self._actions.get_elements(locator, timeout)
 
-    def select_option_by_text(self, locator: Tuple[str, str], text: str, timeout: Optional[int] = None) -> "BaseComponent":
+    def select_option_by_text(
+        self, locator: Tuple[str, str], text: str,
+        timeout: Optional[int] = None,
+    ) -> "BaseComponent":
         self._actions.select_dropdown(locator, text, by=SelectBy.TEXT, timeout=timeout)
         return self
 
-    def select_option_by_value(self, locator: Tuple[str, str], value: str, timeout: Optional[int] = None) -> "BaseComponent":
+    def select_option_by_value(
+        self, locator: Tuple[str, str], value: str,
+        timeout: Optional[int] = None,
+    ) -> "BaseComponent":
         self._actions.select_dropdown(locator, value, by=SelectBy.VALUE, timeout=timeout)
         return self
 
-    def select_option_by_index(self, locator: Tuple[str, str], index: int, timeout: Optional[int] = None) -> "BaseComponent":
+    def select_option_by_index(
+        self, locator: Tuple[str, str], index: int,
+        timeout: Optional[int] = None,
+    ) -> "BaseComponent":
         self._actions.select_dropdown(locator, index, by=SelectBy.INDEX, timeout=timeout)
         return self
 

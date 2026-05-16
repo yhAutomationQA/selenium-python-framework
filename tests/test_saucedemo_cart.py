@@ -1,8 +1,8 @@
 import pytest
 
+from flows.cart_flow import CartFlow
 from flows.flow_utils import BACKPACK, BIKE_LIGHT
 from flows.login_flow import LoginFlow
-from flows.cart_flow import CartFlow
 from pages.cart.cart_page import CartPage
 
 pytestmark = [pytest.mark.ui, pytest.mark.regression]

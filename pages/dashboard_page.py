@@ -1,11 +1,11 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from pages.base_page import BasePage
-from components.navbar_component import NavbarComponent
-from components.sidebar_component import SidebarComponent
 from components.footer_component import FooterComponent
 from components.modal_component import ModalComponent
+from components.navbar_component import NavbarComponent
+from components.sidebar_component import SidebarComponent
+from pages.base_page import BasePage
 
 
 class DashboardPage(BasePage):

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 from flows.base_flow import BaseFlow
 from flows.flow_utils import (

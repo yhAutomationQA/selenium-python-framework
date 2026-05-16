@@ -1,6 +1,6 @@
 from .post_model import PostModel
-from .user_model import GeoModel, AddressModel, CompanyModel, UserModel
 from .todo_model import TodoModel
+from .user_model import AddressModel, CompanyModel, GeoModel, UserModel
 
 __all__ = [
     "PostModel",

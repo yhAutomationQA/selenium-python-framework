@@ -3,7 +3,7 @@
 Marked with @pytest.mark.offline. Run with: pytest -m offline
 Verifies page objects, locators, and flows are correctly defined.
 """
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock
 
 import pytest
 
@@ -100,8 +100,6 @@ class TestLocatorStructure:
         assert hasattr(loc, "TOTAL_LABEL")
 
     def test_all_locators_are_tuples(self):
-        from pages.login.login_locators import LoginLocators
-        from pages.inventory.inventory_locators import InventoryLocators
         from pages.cart.cart_locators import CartLocators
         from pages.checkout.checkout_step_one_locators import (
             CheckoutStepOneLocators,
@@ -109,6 +107,8 @@ class TestLocatorStructure:
         from pages.checkout.checkout_step_two_locators import (
             CheckoutStepTwoLocators,
         )
+        from pages.inventory.inventory_locators import InventoryLocators
+        from pages.login.login_locators import LoginLocators
 
         for loc_cls in [
             LoginLocators,
@@ -168,11 +168,11 @@ class TestPageExports:
     def test_pages_init_exports_all(self):
         from pages import (
             BasePage,
-            LoginPage,
-            InventoryPage,
             CartPage,
             CheckoutStepOnePage,
             CheckoutStepTwoPage,
+            InventoryPage,
+            LoginPage,
         )
 
         assert BasePage is not None
@@ -183,24 +183,24 @@ class TestPageExports:
         assert CheckoutStepTwoPage is not None
 
     def test_flows_init_exports(self):
-        from flows import BaseFlow, LoginFlow, CartFlow, CheckoutFlow
+        from flows import BaseFlow, CartFlow, CheckoutFlow, LoginFlow
 
         assert BaseFlow is not None
         assert LoginFlow is not None
         assert CartFlow is not None
         assert CheckoutFlow is not None
-    
+
     def test_flow_utils_constants(self):
         from flows.flow_utils import (
-            STANDARD_USER,
-            LOCKED_OUT_USER,
-            VALID_PASSWORD,
+            ALL_ITEMS,
             BACKPACK,
             BIKE_LIGHT,
-            ALL_ITEMS,
             DEFAULT_FIRST_NAME,
             INVENTORY_TITLE,
+            LOCKED_OUT_USER,
             LOGIN_ERROR_MISMATCH,
+            STANDARD_USER,
+            VALID_PASSWORD,
         )
 
         assert STANDARD_USER == "standard_user"
@@ -394,9 +394,9 @@ class TestPageMethodSignatures:
         assert hasattr(flow, "total")
 
     def test_flows_return_self_for_chaining(self, mock_driver):
-        from flows.login_flow import LoginFlow
         from flows.cart_flow import CartFlow
         from flows.checkout_flow import CheckoutFlow
+        from flows.login_flow import LoginFlow
 
         login = LoginFlow(mock_driver)
         result = login.navigate_to_login()
@@ -495,7 +495,7 @@ class TestPageMethodSignatures:
         assert "email" in create
 
     def test_factories_init_exports(self):
-        from data.factories import BaseFactory, UserFactory, ProductFactory, ApiPayloadFactory
+        from data.factories import ApiPayloadFactory, BaseFactory, ProductFactory, UserFactory
         assert BaseFactory is not None
         assert UserFactory is not None
         assert ProductFactory is not None
@@ -578,19 +578,18 @@ class TestPageMethodSignatures:
         assert prod == "prod"
 
     def test_data_init_exports(self):
-        from data import BaseFactory, UserFactory, ProductFactory, ApiPayloadFactory
-        from data import JsonDataLoader, TestDataLoader
+        from data import ApiPayloadFactory, BaseFactory, JsonDataLoader, ProductFactory, TestDataLoader, UserFactory
         assert all(x is not None for x in [
             BaseFactory, UserFactory, ProductFactory, ApiPayloadFactory,
             JsonDataLoader, TestDataLoader,
         ])
 
     def test_page_methods_return_self_for_chaining(self, mock_driver):
-        from pages.login.login_page import LoginPage
-        from pages.inventory.inventory_page import InventoryPage
         from pages.cart.cart_page import CartPage
         from pages.checkout.checkout_step_one_page import CheckoutStepOnePage
         from pages.checkout.checkout_step_two_page import CheckoutStepTwoPage
+        from pages.inventory.inventory_page import InventoryPage
+        from pages.login.login_page import LoginPage
 
         for page_cls in [
             LoginPage,
@@ -688,7 +687,7 @@ class TestApiModels:
         assert todo.title == "Test Todo"
 
     def test_all_model_exports(self):
-        from api.models import PostModel, UserModel, TodoModel, AddressModel, CompanyModel, GeoModel
+        from api.models import AddressModel, PostModel, TodoModel, UserModel
         assert PostModel is not None
         assert UserModel is not None
         assert TodoModel is not None
@@ -734,9 +733,13 @@ class TestApiSchemas:
 
     def test_schema_exports(self):
         from api.schemas import (
-            CreatePostSchema, UpdatePostSchema, PatchPostSchema,
-            CreateUserSchema, UpdateUserSchema,
-            CreateTodoSchema, UpdateTodoSchema,
+            CreatePostSchema,
+            CreateTodoSchema,
+            CreateUserSchema,
+            PatchPostSchema,
+            UpdatePostSchema,
+            UpdateTodoSchema,
+            UpdateUserSchema,
         )
         assert all(x is not None for x in [
             CreatePostSchema, UpdatePostSchema, PatchPostSchema,
@@ -778,9 +781,15 @@ class TestApiService:
 
     def test_api_init_exports(self):
         from api import (
-            ApiClient, BaseService, JSONPlaceholderService,
-            PostModel, UserModel, TodoModel,
-            CreatePostSchema, UpdatePostSchema, PatchPostSchema,
+            ApiClient,
+            BaseService,
+            CreatePostSchema,
+            JSONPlaceholderService,
+            PatchPostSchema,
+            PostModel,
+            TodoModel,
+            UpdatePostSchema,
+            UserModel,
         )
         assert all(x is not None for x in [
             ApiClient, BaseService, JSONPlaceholderService,
@@ -789,7 +798,7 @@ class TestApiService:
         ])
 
     def test_utils_exports(self):
-        from utils import LoggerConfig, log, AllureManager, ScreenshotManager, Helpers, DataGenerator
+        from utils import AllureManager, DataGenerator, Helpers, LoggerConfig, ScreenshotManager, log
         assert LoggerConfig is not None
         assert log is not None
         assert AllureManager is not None
@@ -876,6 +885,7 @@ class TestScreenshotManager:
         old_file = tmp_path / "old.png"
         old_file.touch()
         old_mtime = t.time() - (31 * 86400)
+        import os
         os.utime(str(old_file), (old_mtime, old_mtime))
 
         removed = mgr.cleanup(max_age_days=30)
@@ -1000,7 +1010,7 @@ class TestRetryConfig:
 
 class TestRetryPresets:
     def test_stale_element_preset(self):
-        from utils.retry_handler import STALE_ELEMENT_CONFIG, RetryMode
+        from utils.retry_handler import STALE_ELEMENT_CONFIG
 
         cfg = STALE_ELEMENT_CONFIG
         assert cfg.attempts == 3
@@ -1126,7 +1136,7 @@ class TestRetryDecorators:
             retry_decorator()
 
     def test_retry_decorator_with_override_kwargs(self):
-        from utils.retry_handler import retry_decorator, RetryMode
+        from utils.retry_handler import RetryMode, retry_decorator
 
         call_count = 0
 
@@ -1162,7 +1172,7 @@ class TestRetryDecorators:
 
 class TestRetryCall:
     def test_retry_call_basic(self):
-        from utils.retry_handler import retry_call, RetryMode
+        from utils.retry_handler import RetryMode, retry_call
 
         call_count = 0
 
@@ -1178,7 +1188,7 @@ class TestRetryCall:
         assert call_count == 2
 
     def test_retry_call_custom_config(self):
-        from utils.retry_handler import retry_call, RetryConfig
+        from utils.retry_handler import RetryConfig, retry_call
 
         call_count = 0
 
@@ -1206,7 +1216,7 @@ class TestRetryCall:
             retry_call(fn)
 
     def test_retry_call_passes_args_and_kwargs(self):
-        from utils.retry_handler import retry_call, RetryMode
+        from utils.retry_handler import RetryMode, retry_call
 
         def adder(a, b, multiplier=1):
             return (a + b) * multiplier
@@ -1215,7 +1225,7 @@ class TestRetryCall:
         assert result == 50
 
     def test_retry_call_with_stale_element(self):
-        from utils.retry_handler import retry_call, RetryMode
+        from utils.retry_handler import RetryMode, retry_call
 
         call_count = 0
 
@@ -1240,7 +1250,7 @@ class TestRetryHandler:
             RetryHandler()
 
     def test_handler_rejects_both_config_and_mode(self):
-        from utils.retry_handler import RetryHandler, RetryMode, RetryConfig
+        from utils.retry_handler import RetryConfig, RetryHandler, RetryMode
 
         with pytest.raises(ValueError, match="Provide either 'config' or 'mode', not both"):
             RetryHandler(config=RetryConfig(), mode=RetryMode.SMART_WAIT)
@@ -1260,7 +1270,7 @@ class TestRetryHandler:
         assert handler.config.attempts == 5
 
     def test_handler_with_custom_config(self):
-        from utils.retry_handler import RetryHandler, RetryConfig
+        from utils.retry_handler import RetryConfig, RetryHandler
 
         cfg = RetryConfig(attempts=10, wait_strategy="fixed", min_wait=0.5)
         handler = RetryHandler(config=cfg)
@@ -1312,7 +1322,7 @@ class TestRetryHandler:
         assert handler.config.attempts == 5
 
         with pytest.raises(ValueError):
-            with handler.temporary_config(mode="fast") as h:
+            with handler.temporary_config(mode="fast"):
                 raise ValueError("boom")
 
         assert handler.config.attempts == 5
@@ -1325,7 +1335,7 @@ class TestRetryHandler:
         assert "RetryHandler" in r
 
     def test_handler_config_setter(self):
-        from utils.retry_handler import RetryHandler, RetryConfig
+        from utils.retry_handler import RetryConfig, RetryHandler
 
         handler = RetryHandler(mode="fast")
         assert handler.config.attempts == 2
@@ -1353,7 +1363,7 @@ class TestRetryHandler:
         assert call_count == 2
 
     def test_handler_temporary_config_with_custom(self):
-        from utils.retry_handler import RetryHandler, RetryConfig
+        from utils.retry_handler import RetryConfig, RetryHandler
 
         handler = RetryHandler(mode="smart_wait")
         custom = RetryConfig(attempts=7, wait_strategy="fixed", min_wait=0.01)
@@ -1370,14 +1380,14 @@ class TestRetryExports:
     def test_retry_handler_exports_from_utils(self):
         from utils import (
             RetryConfig,
-            RetryMode,
             RetryHandler,
-            retry_decorator,
-            retry_call,
-            stale_element_retry,
-            flaky_test_retry,
+            RetryMode,
             api_retry,
+            flaky_test_retry,
+            retry_call,
+            retry_decorator,
             smart_retry,
+            stale_element_retry,
         )
 
         assert RetryConfig is not None

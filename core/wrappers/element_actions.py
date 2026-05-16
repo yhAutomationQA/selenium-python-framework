@@ -2,24 +2,23 @@ import logging
 import os
 from typing import Callable, List, Optional, Tuple, Union
 
-from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.remote.webelement import WebElement
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.support.ui import Select
 from selenium.common.exceptions import (
     ElementClickInterceptedException,
     ElementNotInteractableException,
-    ElementNotSelectableException,
     MoveTargetOutOfBoundsException,
     NoSuchElementException,
     StaleElementReferenceException,
     TimeoutException,
     WebDriverException,
 )
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.remote.webelement import WebElement
+from selenium.webdriver.support.ui import Select
 
-from core.wrappers.waits import ElementWaits
-from core.wrappers.javascript_actions import JavaScriptActions
 from config.constants import SelectBy
+from core.wrappers.javascript_actions import JavaScriptActions
+from core.wrappers.waits import ElementWaits
 
 logger = logging.getLogger(__name__)
 
@@ -165,7 +164,7 @@ class ElementActions:
                 logger.error("WebDriver error on '%s' [%s]: %s", action_name, target, e)
                 self._screenshot(f"{action_name}_error")
                 raise ElementActionsError(
-                    f"Failed to {action_name}: {e}" 
+                    f"Failed to {action_name}: {e}"
                 ) from e
 
         self._screenshot(f"{action_name}_failed")
@@ -398,7 +397,10 @@ class ElementActions:
         self._log_action("get_elements", locator)
         return self._waits.for_all_visible(locator, timeout)
 
-    def javascript_click(self, target: Union[Tuple[str, str], WebElement], timeout: Optional[int] = None) -> "ElementActions":
+    def javascript_click(
+        self, target: Union[Tuple[str, str], WebElement],
+        timeout: Optional[int] = None,
+    ) -> "ElementActions":
         self._log_action("javascript_click", target)
         self._js.click(target, timeout)
         return self

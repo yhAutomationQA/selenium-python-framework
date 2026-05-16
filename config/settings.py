@@ -1,7 +1,8 @@
+import warnings
+from typing import Optional
+
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Optional
-import warnings
 
 
 class Settings(BaseSettings):

@@ -1,13 +1,12 @@
 import pytest
 
+from flows.cart_flow import CartFlow
 from flows.flow_utils import (
     BACKPACK,
     BIKE_LIGHT,
-    ALL_ITEMS,
     INVENTORY_TITLE,
 )
 from flows.login_flow import LoginFlow
-from flows.cart_flow import CartFlow
 from pages.inventory.inventory_page import InventoryPage
 
 pytestmark = [pytest.mark.ui, pytest.mark.regression]

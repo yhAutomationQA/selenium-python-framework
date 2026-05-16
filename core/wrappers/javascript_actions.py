@@ -2,13 +2,11 @@ import logging
 import time
 from typing import Optional, Tuple, Union
 
-from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.remote.webelement import WebElement
 from selenium.common.exceptions import (
     JavascriptException,
-    TimeoutException,
-    WebDriverException,
 )
+from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.remote.webelement import WebElement
 
 from core.wrappers.waits import ElementWaits
 
@@ -165,7 +163,8 @@ class JavaScriptActions:
     ) -> dict:
         element = self._resolve(target, timeout)
         return self._execute(
-            "var r = arguments[0].getBoundingClientRect(); return {x: r.x, y: r.y, width: r.width, height: r.height, top: r.top, bottom: r.bottom};",
+            "var r = arguments[0].getBoundingClientRect();"
+            " return {x: r.x, y: r.y, width: r.width, height: r.height, top: r.top, bottom: r.bottom};",
             element,
         )
 

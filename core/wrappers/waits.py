@@ -2,15 +2,14 @@ import logging
 from enum import Enum
 from typing import Callable, List, Optional, Tuple, Type, Union
 
-from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.remote.webelement import WebElement
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import (
     StaleElementReferenceException,
-    TimeoutException,
-    WebDriverException,
 )
+from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.remote.webelement import WebElement
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
 logger = logging.getLogger(__name__)
 
@@ -147,7 +146,7 @@ class ElementWaits:
 
     def for_any(self, *locators: Tuple[str, str], timeout: Optional[int] = None) -> WebElement:
         return self._wait(timeout).until(
-            EC.presence_of_all_elements_located((By.XPATH, " | ".join(f"({l[1]})" for l in locators)))
+            EC.presence_of_all_elements_located((By.XPATH, " | ".join(f"({loc[1]})" for loc in locators)))
         )
 
     def for_all_visible(self, locator: Tuple[str, str], timeout: Optional[int] = None) -> List[WebElement]:

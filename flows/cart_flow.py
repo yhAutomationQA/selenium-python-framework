@@ -1,8 +1,8 @@
 from typing import List
 
+from flows.base_flow import BaseFlow
 from pages.cart.cart_page import CartPage
 from pages.inventory.inventory_page import InventoryPage
-from flows.base_flow import BaseFlow
 
 
 class CartFlow(BaseFlow):

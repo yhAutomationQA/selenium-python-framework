@@ -27,10 +27,8 @@ Usage:
 
 from __future__ import annotations
 
-import sys
 from contextlib import contextmanager
 from enum import Enum
-from functools import wraps
 from typing import (
     Any,
     Callable,
@@ -44,11 +42,9 @@ from typing import (
 )
 
 from tenacity import (
-    before_sleep_log,
     retry,
     retry_if_exception_type,
     stop_after_attempt,
-    stop_never,
     wait_exponential,
     wait_fixed,
     wait_random_exponential,

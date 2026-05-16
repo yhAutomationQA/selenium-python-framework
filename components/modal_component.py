@@ -13,7 +13,10 @@ class ModalComponent(BaseComponent):
     ROOT = (By.CSS_SELECTOR, ".modal, [role='dialog'], .dialog, .overlay")
     TITLE = (By.CSS_SELECTOR, ".modal-title, .dialog-title, h2, h3, [role='dialog'] h2")
     BODY = (By.CSS_SELECTOR, ".modal-body, .dialog-body, .modal-content > p, [role='dialog'] > p")
-    CONFIRM_BUTTON = (By.CSS_SELECTOR, ".modal-confirm, .confirm-btn, .btn-primary, button[type='submit'], [data-action='confirm']")
+    CONFIRM_BUTTON = (
+        By.CSS_SELECTOR,
+        ".modal-confirm, .confirm-btn, .btn-primary, button[type='submit'], [data-action='confirm']",
+    )
     CANCEL_BUTTON = (By.CSS_SELECTOR, ".modal-cancel, .cancel-btn, .btn-secondary, [data-action='cancel']")
     CLOSE_BUTTON = (By.CSS_SELECTOR, ".modal-close, .close-btn, .dismiss, [data-dismiss='modal']")
     BACKDROP = (By.CSS_SELECTOR, ".modal-backdrop, .overlay-backdrop")
@@ -73,7 +76,11 @@ class ModalComponent(BaseComponent):
         inputs = self.find_elements(self.INPUTS)
         if index >= len(inputs):
             raise IndexError(f"Modal has {len(inputs)} inputs, cannot access index {index}")
-        self.fill(self.INPUTS if index == 0 else (By.CSS_SELECTOR, f".modal-body input:nth-of-type({index + 1})"), text, timeout=timeout)
+        locator = (
+            self.INPUTS if index == 0
+            else (By.CSS_SELECTOR, f".modal-body input:nth-of-type({index + 1})")
+        )
+        self.fill(locator, text, timeout=timeout)
         return self
 
     def get_error_text(self) -> str:

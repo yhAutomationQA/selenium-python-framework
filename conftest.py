@@ -1,5 +1,4 @@
 import os
-import logging
 from typing import Generator
 
 import pytest
@@ -10,10 +9,9 @@ from config.settings import Settings
 from core.driver.browser_options import BrowserOptionsFactory
 from core.driver.driver_factory import DriverFactory
 from core.driver.driver_manager import DriverManager
-from utils.logger import LoggerConfig, log
 from utils.allure_manager import AllureManager
+from utils.logger import LoggerConfig, log
 from utils.screenshot_manager import ScreenshotManager
-
 
 # ── CLI Options ──────────────────────────────────────────────────
 
@@ -180,6 +178,7 @@ def driver_manager() -> Generator[DriverManager, None, None]:
 
 @pytest.fixture(scope="function")
 def driver(
+    request,
     settings: Settings,
     browser_name: str,
     headless: bool,
@@ -202,6 +201,7 @@ def driver(
     driver_instance.maximize_window()
     driver_manager.register(driver_instance)
 
+    request.node._driver = driver_instance
     log.debug("Driver started | session={}", driver_instance.session_id)
 
     yield driver_instance
@@ -227,11 +227,10 @@ def screenshot_manager() -> ScreenshotManager:
 @pytest.fixture(scope="function", autouse=True)
 def attach_on_failure(
     request,
-    driver: WebDriver,
     screenshot_manager: ScreenshotManager,
 ):
     """Autouse fixture: captures screenshot + page source on test failure
-    and attaches them to Allure."""
+    and attaches them to Allure. Skips if no driver exists (e.g. offline tests)."""
     yield
     if request.node.rep_call.failed if hasattr(request.node, "rep_call") else False:
         test_name = request.node.name
@@ -241,4 +240,6 @@ def attach_on_failure(
         if exc_info is not None:
             exc = exc_info.value
 
-        screenshot_manager.capture_on_failure(driver, test_name, exception=exc)
+        driver = getattr(request.node, "_driver", None)
+        if driver is not None:
+            screenshot_manager.capture_on_failure(driver, test_name, exception=exc)

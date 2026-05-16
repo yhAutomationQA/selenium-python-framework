@@ -4,7 +4,7 @@ from typing import Optional
 
 from loguru import logger
 
-from config.constants import Directory, LogLevel as LogLevelEnum
+from config.constants import Directory
 
 
 class LoggerConfig:

@@ -1,15 +1,15 @@
 from flows.base_flow import BaseFlow
 from flows.flow_utils import (
-    STANDARD_USER,
-    LOCKED_OUT_USER,
-    PROBLEM_USER,
-    PERFORMANCE_GLITCH_USER,
     ERROR_USER,
-    VISUAL_USER,
+    LOCKED_OUT_USER,
+    PERFORMANCE_GLITCH_USER,
+    PROBLEM_USER,
+    STANDARD_USER,
     VALID_PASSWORD,
+    VISUAL_USER,
 )
-from pages.login.login_page import LoginPage
 from pages.inventory.inventory_page import InventoryPage
+from pages.login.login_page import LoginPage
 
 
 class LoginFlow(BaseFlow):

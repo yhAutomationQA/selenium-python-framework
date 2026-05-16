@@ -1,7 +1,6 @@
 import logging
 import time
-from functools import wraps
-from typing import Any, Callable, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional
 
 from requests import Response, Session
 from requests.exceptions import ConnectionError, Timeout

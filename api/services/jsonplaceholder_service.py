@@ -1,9 +1,9 @@
-from typing import List, Optional
+from typing import List
 
 from api.client.api_client import ApiClient
 from api.models.post_model import PostModel
-from api.models.user_model import UserModel
 from api.models.todo_model import TodoModel
+from api.models.user_model import UserModel
 from api.schemas.post_schema import CreatePostSchema, PatchPostSchema, UpdatePostSchema
 from api.schemas.todo_schema import CreateTodoSchema, UpdateTodoSchema
 from api.schemas.user_schema import CreateUserSchema, UpdateUserSchema

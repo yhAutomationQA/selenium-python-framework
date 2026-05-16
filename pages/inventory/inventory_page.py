@@ -1,12 +1,10 @@
 from typing import Dict, List, Optional
 
-from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 
 from pages.base_page import BasePage
 from pages.inventory.inventory_locators import InventoryLocators
-from config.constants import SelectBy
 
 
 class InventoryPage(BasePage):

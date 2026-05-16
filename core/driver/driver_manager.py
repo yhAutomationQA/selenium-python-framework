@@ -1,7 +1,8 @@
 import logging
 import threading
-from selenium.webdriver.remote.webdriver import WebDriver
 from typing import Dict, Optional
+
+from selenium.webdriver.remote.webdriver import WebDriver
 
 logger = logging.getLogger(__name__)
 

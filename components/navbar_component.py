@@ -1,9 +1,8 @@
 import logging
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.remote.webelement import WebElement
 
 from components.base_component import BaseComponent
 
