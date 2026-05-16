@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "selenium-python-framework"
+version = "1.0.0"
+description = "Enterprise-grade Selenium Python Automation Framework"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [
+    { name = "QA Team" },
+]
+keywords = ["selenium", "pytest", "automation", "testing", "qa"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "smoke: Smoke tests - core critical path",
+    "regression: Full regression suite",
+    "sanity: Sanity checks after deployment",
+    "e2e: End-to-end user journey tests",
+    "integration: Integration tests",
+    "api: API contract and functional tests",
+    "ui: UI interaction tests",
+    "slow: Slow running tests",
+    "flaky: Known flaky tests requiring reruns",
+    "parallel: Tests safe for parallel execution",
+    "data_driven: Data-driven tests",
+    "negative: Negative/error path tests",
+]
+
+[tool.coverage.run]
+source = ["pages", "flows", "core", "api", "utils"]
+omit = ["tests/*", "**/__init__.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+indent-width = 4
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

@@ -1,0 +1,58 @@
+# Byte-compiled
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution
+dist/
+build/
+*.egg-info/
+*.egg
+.eggs/
+
+# Virtual Environment
+venv/
+.env/
+.venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Test Artifacts
+reports/
+screenshots/
+logs/
+htmlcov/
+.coverage
+.pytest_cache/
+allure-results/
+allure-report/
+results/
+
+# Docker
+docker-compose*.yml
+Dockerfile
+
+# Environment
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project
+*.db
+*.pid
+*.pid.lock

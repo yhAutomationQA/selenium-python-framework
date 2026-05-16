@@ -1,0 +1,21 @@
+{
+  "users": {
+    "admin": {
+      "username": "admin",
+      "password": "Admin@123",
+      "email": "admin@example.com"
+    },
+    "standard": {
+      "username": "testuser",
+      "password": "Test@123",
+      "email": "testuser@example.com"
+    }
+  },
+  "search": {
+    "valid_terms": ["automation", "selenium", "pytest"],
+    "invalid_terms": ["!@#$%", ""]
+  },
+  "navigation": {
+    "base_paths": ["/home", "/login", "/dashboard", "/profile"]
+  }
+}

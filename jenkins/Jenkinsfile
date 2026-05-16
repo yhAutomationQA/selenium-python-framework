@@ -1,0 +1,76 @@
+pipeline {
+    agent any
+
+    tools {
+        python 'python3.12'
+    }
+
+    parameters {
+        choice(
+            name: 'BROWSER',
+            choices: ['chrome', 'firefox', 'edge'],
+            description: 'Browser to run tests on'
+        )
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['dev', 'qa', 'staging', 'prod'],
+            description: 'Target environment'
+        )
+        choice(
+            name: 'MARKERS',
+            choices: ['smoke', 'regression', 'sanity', 'e2e'],
+            description: 'Test marker to execute'
+        )
+        booleanParam(
+            name: 'HEADLESS',
+            defaultValue: true,
+            description: 'Run in headless mode'
+        )
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Setup Virtual Environment') {
+            steps {
+                sh '''
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                '''
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                sh '''
+                    . venv/bin/activate
+                    pytest -v \\
+                        --browser=${BROWSER} \\
+                        --env=${ENVIRONMENT} \\
+                        ${HEADLESS ? '--headless' : ''} \\
+                        -m ${MARKERS} \\
+                        --html=reports/${MARKERS}_${ENVIRONMENT}_report.html \\
+                        --self-contained-html \\
+                        --junitxml=reports/junit_report.xml
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: 'reports/**/*', fingerprint: true
+            junit 'reports/junit_report.xml'
+            cleanWs()
+        }
+        failure {
+            echo "Tests failed. Check archived reports."
+        }
+    }
+}
