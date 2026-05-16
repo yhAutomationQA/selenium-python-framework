@@ -9,10 +9,13 @@
  *   - Pipeline (Declarative)
  *   - Allure Jenkins Plugin
  *   - JUnit Plugin
+ *   - SonarQube Scanner
+ *   - Credentials Binding
  *
  * Required Jenkins global tools (names configurable in Manage Jenkins → Tools):
  *   - Python 3.12 (named "python3.12")
  *   - Allure Commandline (named "allure")
+ *   - SonarQube Scanner (named "sonar-scanner")
  */
 
 def BROWSER_LIST    = ["chrome", "firefox", "edge"]
@@ -109,6 +112,7 @@ pipeline {
                             . venv/bin/activate
                             pip install --quiet --upgrade pip
                             pip install --quiet -r requirements.txt
+                            pip install --quiet -r requirements-dev.txt
                         """
                     }
                 }
@@ -150,14 +154,61 @@ pipeline {
         }
 
         // ─────────────────────────────────────────────────────────
-        // 4. Offline Tests (no browser needed — fast feedback)
+        // 4. SonarQube Analysis (code quality + coverage)
+        // ─────────────────────────────────────────────────────────
+        stage("SonarQube Analysis") {
+            steps {
+                script {
+                    // Run offline tests with coverage for SonarQube
+                    sh """
+                        mkdir -p ${REPORTS_DIR}
+                        pip install --quiet pytest-cov
+                    """
+                    executeTests("offline", "offline")
+
+                    // SonarQube scanner (requires SonarQube Scanner plugin)
+                    // withSonarQubeEnv(credentialsId: "sonarqube-token") {
+                    //     sh """
+                    //         sonar-scanner \\
+                    //             -Dsonar.projectKey=selenium-python-framework \\
+                    //             -Dsonar.sources=pages,flows,core,api,utils,config,data,components \\
+                    //             -Dsonar.tests=tests \\
+                    //             -Dsonar.python.coverage.reportPaths=coverage.xml \\
+                    //             -Dsonar.python.bandit.reportPaths=${REPORTS_DIR}/bandit_report.html \\
+                    //             -Dsonar.qualitygate.wait=true
+                    //     """
+                    // }
+                    echo "SonarQube scanner configured but requires credentials binding."
+                    echo "Uncomment withSonarQubeEnv block and set credentialsId in your Jenkins instance."
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────
+        // 5. Snyk Dependency Scan
+        // ─────────────────────────────────────────────────────────
+        stage("Snyk Dependency Scan") {
+            steps {
+                script {
+                    sh """
+                        pip install --quiet snyk
+                        mkdir -p ${REPORTS_DIR}
+                        snyk test --json-file-output=${REPORTS_DIR}/snyk_report.json || true
+                        snyk monitor --project-name=selenium-python-framework || true
+                    """
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────
+        // 6. Offline Tests (no browser needed — fast feedback)
         // ─────────────────────────────────────────────────────────
         stage("Offline Tests") {
             steps { script { executeTests("offline", "offline") } }
         }
 
         // ─────────────────────────────────────────────────────────
-        // 5. Smoke Tests (browser matrix)
+        // 7. Smoke Tests (browser matrix)
         // ─────────────────────────────────────────────────────────
         stage("Smoke Tests") {
             when {
@@ -171,7 +222,7 @@ pipeline {
         }
 
         // ─────────────────────────────────────────────────────────
-        // 6. Regression Tests (browser matrix, edge excluded)
+        // 8. Regression Tests (browser matrix, edge excluded)
         // ─────────────────────────────────────────────────────────
         stage("Regression Tests") {
             when {
@@ -185,7 +236,7 @@ pipeline {
         }
 
         // ─────────────────────────────────────────────────────────
-        // 7. Allure Reporting (aggregate all result directories)
+        // 9. Allure Reporting (aggregate all result directories)
         // ─────────────────────────────────────────────────────────
         stage("Allure Reporting") {
             steps {
@@ -246,6 +297,20 @@ pipeline {
                 // Archive framework logs
                 archiveArtifacts(
                     artifacts: "${LOGS_DIR}/**/*.log",
+                    fingerprint: false,
+                    allowEmptyArchive: true
+                )
+
+                // Archive coverage report
+                archiveArtifacts(
+                    artifacts: "coverage.xml",
+                    fingerprint: false,
+                    allowEmptyArchive: true
+                )
+
+                // Archive Snyk report
+                archiveArtifacts(
+                    artifacts: "${REPORTS_DIR}/snyk_report.json",
                     fingerprint: false,
                     allowEmptyArchive: true
                 )
@@ -329,6 +394,7 @@ def executeTests(browser, marker) {
 
 def localRunPytest(browser, marker, allureDir, htmlReport, junitXml) {
     def markerFlag = marker == "offline" ? "-m offline" : "-m ${marker}"
+    def coverageArgs = marker == "offline" ? "--cov=pages --cov=flows --cov=core --cov=api --cov=utils --cov=config --cov=data --cov-report=xml:coverage.xml --cov-report=term" : ""
 
     sh """
         . venv/bin/activate
@@ -339,6 +405,7 @@ def localRunPytest(browser, marker, allureDir, htmlReport, junitXml) {
             --browser=${browser} \\
             --env=${params.ENVIRONMENT} \\
             ${HEADLESS_FLAG} \\
+            ${coverageArgs} \\
             -n auto \\
             --alluredir=${allureDir} \\
             --html=${htmlReport} \\

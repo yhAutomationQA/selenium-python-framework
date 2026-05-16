@@ -1,0 +1,16 @@
+# Development & CI tooling (not required at runtime)
+# Install with: pip install -r requirements-dev.txt
+
+# Linting
+ruff>=0.6.0
+
+# Security scanning
+bandit>=1.7.0
+
+# Code coverage
+pytest-cov>=5.0.0
+coverage>=7.6.0
+
+# Dependency vulnerability scanning
+pip-audit>=2.7.0
+safety>=3.0.0

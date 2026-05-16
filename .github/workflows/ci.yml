@@ -106,6 +106,84 @@ jobs:
           path: bandit_report.html
           retention-days: 30
 
+  sonarqube:
+    name: SonarQube Scan
+    needs: [lint]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dev dependencies
+        run: pip install --quiet -r requirements-dev.txt
+
+      - name: Generate coverage report
+        run: |
+          pytest -m offline \
+            --env=${{ env.ENV }} \
+            --cov=pages --cov=flows --cov=core --cov=api --cov=utils --cov=config --cov=data \
+            --cov-report=xml:coverage.xml \
+            --cov-report=term
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL || 'https://sonarcloud.io' }}
+        with:
+          args: >
+            -Dsonar.python.coverage.reportPaths=coverage.xml
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+          retention-days: 14
+
+  snyk-scan:
+    name: Snyk Dependency Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Snyk test (open source)
+        uses: snyk/actions/python@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --fail-on=all
+
+      - name: Snyk monitor
+        if: github.ref == 'refs/heads/main'
+        uses: snyk/actions/python@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: monitor
+          args: --project-name=${{ github.event.repository.name }}
+
+      - name: Upload Snyk report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snyk-report
+          path: snyk_report.html
+          retention-days: 14
+
   offline-tests:
     name: Offline / API Tests
     runs-on: ubuntu-latest
@@ -346,6 +424,8 @@ jobs:
     needs:
       - lint
       - security
+      - sonarqube
+      - snyk-scan
       - offline-tests
       - smoke-tests
       - regression-tests
@@ -360,7 +440,9 @@ jobs:
           | Stage | Matrix | Status |
           |-------|--------|--------|
           | Lint & Format | — | ${{ needs.lint.result == 'success' && '✅' || '❌' }} |
-          | Security Scan | — | ${{ needs.security.result == 'success' && '✅' || needs.security.result == 'failure' && '❌' || '⚠️' }} |
+          | Security Scan (Bandit) | — | ${{ needs.security.result == 'success' && '✅' || needs.security.result == 'failure' && '❌' || '⚠️' }} |
+          | SonarQube | — | ${{ needs.sonarqube.result == 'success' && '✅' || needs.sonarqube.result == 'failure' && '❌' || '⚠️' }} |
+          | Snyk Dependency Scan | — | ${{ needs.snyk-scan.result == 'success' && '✅' || needs.snyk-scan.result == 'failure' && '❌' || '⚠️' }} |
           | Offline / API Tests | — | ${{ needs.offline-tests.result == 'success' && '✅' || '❌' }} |
           | Smoke Tests | chrome, firefox, edge | ${{ needs.smoke-tests.result == 'success' && '✅' || '❌' }} |
           | Regression Tests | chrome, firefox | ${{ needs.regression-tests.result == 'success' && '✅' || '❌' }} |
