@@ -1,17 +1,19 @@
+from __future__ import annotations
+
 import os
-from typing import Generator
+from typing import TYPE_CHECKING, Generator
 
 import pytest
-from selenium.webdriver.remote.webdriver import WebDriver
+
+if TYPE_CHECKING:
+    from selenium.webdriver.remote.webdriver import WebDriver
+
+    from core.driver.driver_manager import DriverManager
+    from utils.screenshot_manager import ScreenshotManager
 
 from config.config_loader import load_settings, resolve_env
 from config.settings import Settings
-from core.driver.browser_options import BrowserOptionsFactory
-from core.driver.driver_factory import DriverFactory
-from core.driver.driver_manager import DriverManager
-from utils.allure_manager import AllureManager
 from utils.logger import LoggerConfig, log
-from utils.screenshot_manager import ScreenshotManager
 
 # ── CLI Options ──────────────────────────────────────────────────
 
@@ -84,6 +86,8 @@ def pytest_sessionfinish(session):
     config_ = session.config
     env = config_.getoption("--env") or os.getenv("ENV", "qa")
     settings = load_settings(env)
+    from utils.allure_manager import AllureManager
+
     AllureManager.set_environment_from_settings(settings)
 
 
@@ -167,7 +171,9 @@ def api_url(settings: Settings) -> str:
 
 
 @pytest.fixture(scope="session")
-def driver_manager() -> Generator[DriverManager, None, None]:
+def driver_manager() -> Generator["DriverManager", None, None]:
+    from core.driver.driver_manager import DriverManager
+
     manager = DriverManager()
     yield manager
     remaining = manager.active_count
@@ -183,8 +189,11 @@ def driver(
     browser_name: str,
     headless: bool,
     incognito: bool,
-    driver_manager: DriverManager,
-) -> Generator[WebDriver, None, None]:
+    driver_manager: "DriverManager",
+) -> Generator["WebDriver", None, None]:
+    from core.driver.browser_options import BrowserOptionsFactory
+    from core.driver.driver_factory import DriverFactory
+
     options = BrowserOptionsFactory.create_options(
         browser=browser_name,
         headless=headless,
@@ -220,14 +229,16 @@ def logger():
 
 
 @pytest.fixture(scope="session")
-def screenshot_manager() -> ScreenshotManager:
+def screenshot_manager() -> "ScreenshotManager":
+    from utils.screenshot_manager import ScreenshotManager
+
     return ScreenshotManager()
 
 
 @pytest.fixture(scope="function", autouse=True)
 def attach_on_failure(
     request,
-    screenshot_manager: ScreenshotManager,
+    screenshot_manager: "ScreenshotManager",
 ):
     """Autouse fixture: captures screenshot + page source on test failure
     and attaches them to Allure. Skips if no driver exists (e.g. offline tests)."""
