@@ -6,12 +6,18 @@ from webdriver_manager.microsoft import EdgeChromiumDriverManager
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.firefox.service import Service as FirefoxService
 from selenium.webdriver.edge.service import Service as EdgeService
+from typing import Optional
 
 
 class DriverFactory:
 
     @staticmethod
-    def create_driver(browser: str = "chrome", headless: bool = False) -> WebDriver:
+    def create_driver(
+        browser: str = "chrome",
+        headless: bool = False,
+        page_load_timeout: int = 30,
+        implicit_wait: int = 10,
+    ) -> WebDriver:
         browser = browser.lower()
         drivers = {
             "chrome": DriverFactory._create_chrome_driver,
@@ -21,7 +27,10 @@ class DriverFactory:
         creator = drivers.get(browser)
         if not creator:
             raise ValueError(f"Unsupported browser: {browser}. Supported: {list(drivers.keys())}")
-        return creator(headless)
+        driver = creator(headless)
+        driver.set_page_load_timeout(page_load_timeout)
+        driver.implicitly_wait(implicit_wait)
+        return driver
 
     @staticmethod
     def _create_chrome_driver(headless: bool) -> WebDriver:

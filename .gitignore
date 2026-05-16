@@ -39,7 +39,7 @@ results/
 docker-compose*.yml
 Dockerfile
 
-# Environment
+# Environment (local only; .env.dev, .env.qa, .env.staging are tracked)
 .env
 .env.local
 .env.production
